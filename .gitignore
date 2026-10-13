@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+migration-data/
+*.tar.gz
+test-export.xlsx
