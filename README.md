@@ -5,6 +5,10 @@ Mobile Anwesenheitsverwaltung für wöchentliche Kurse. React-Oberfläche auf Gi
 ## Funktionen
 
 - Schülerlisten einfügen, Gruppen anlegen und Schüler zuteilen
+- Schüler archivieren oder mit Bestätigung einschließlich aller Anwesenheitseinträge dauerhaft löschen
+- Gruppenführer automatisch als Schüler ihrer eigenen Gruppe führen; vorhandene Schüler werden über ihre ID verknüpft
+- Admin-Korrekturen auf „nicht gemeldet“ zurücksetzen
+- Große Schüler- und Gruppenführernamen in der mobilen Gruppenansicht
 - Eigene widerrufbare Gruppenlinks; Gruppenführer sehen ausschließlich ihre Gruppe
 - Anwesenheit pro Unterrichtsdatum: anwesend, abwesend, entschuldigt
 - Fortlaufende zentrale Tabelle, historische Gruppenzuteilung pro Termin

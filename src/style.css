@@ -7,3 +7,20 @@
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
 .login-page{padding:40px 15px;display:grid;place-items:center}.login-card{width:440px;max-width:100%;background:white;border:1px solid #dfe7dc;border-radius:16px;padding:35px}.login-card .brand{margin-bottom:38px}.login-card h1{font-size:27px}.login-card>p{font-size:12px;color:#8f9e85;line-height:1.8;margin:14px 0 24px}.login-card label{display:block;font-size:12px;color:#6b8560;margin:18px 0}.login-card input{display:block;width:100%;margin-top:8px;min-height:45px}.login-card form>.btn{width:100%;margin:7px 0 18px}.login-card form>.textbutton{width:100%;justify-content:center}.login-note{display:flex;gap:8px;align-items:center;margin-top:25px;font-size:10px;line-height:1.7;color:#9caa92}.studentname strong{unicode-bidi:plaintext}.login-card .alert{margin-top:18px}
+
+/* Readable group attendance on phones. */
+.group-panel .studentname strong{font-size:18px;line-height:1.5;overflow-wrap:anywhere;min-width:0;color:#253d3a}
+.group-panel .leader-name{font-size:18px;line-height:1.6;color:#3f6050;margin-top:8px;overflow-wrap:anywhere}
+.group-mode .profile strong{font-size:17px;line-height:1.5;overflow-wrap:anywhere}
+.btn.danger{background:#a7473b;border-color:#a7473b;color:white}.btn.danger:hover{background:#88392f}
+.delete-button{color:#a7473b;margin-left:12px}
+@media(max-width:760px){
+ .group-panel .studentname strong{font-size:20px;line-height:1.55}
+ .group-panel .studentname{align-items:flex-start;gap:12px}
+ .group-panel .studentname .avatar{margin-top:3px;flex-shrink:0}
+ .group-panel .leader-name{font-size:20px;line-height:1.55}
+ .group-panel .status-btn{font-size:14px;min-height:48px}
+ .group-panel .group-tools{font-size:14px}.group-panel .group-tools small{font-size:12px}
+ .group-mode .profile strong{font-size:18px}
+ .group-panel .panelhead label{font-size:13px}.group-panel .panelhead select{font-size:16px}
+}

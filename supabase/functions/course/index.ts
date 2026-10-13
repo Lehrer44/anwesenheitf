@@ -1,4 +1,4 @@
-import {initial,mutate,groupView, type State} from './model.ts';
+import {initial,mutate,groupView,normalizeLeaders, type State} from './model.ts';
 const url=Deno.env.get('SUPABASE_URL')!;
 const service=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 // The platform accepts requests without JWT so that group links work.
@@ -50,12 +50,14 @@ export async function handle(req:Request):Promise<Response> {
    const state=row.state as State;
    const group=token?state.groups.find(g=>g.token===token):undefined;
    if(token&&!group)return json({error:'Dieser Gruppenlink ist ungültig oder wurde erneuert.'},403);
-   if(write) {
-    mutate(state,b,group);
+   const before=JSON.stringify(state);normalizeLeaders(state);
+   if(write)mutate(state,b,group);
+   const changedState=write||JSON.stringify(state)!==before;
+   if(changedState) {
     const changed=await rest('id=eq.'+row.id+'&version=eq.'+row.version,'PATCH',{state,version:row.version+1});
     if(!changed.length)continue;
    }
-   return json({course:row.id,role:group?'group':'admin',state:group?groupView(state,group):state,version:row.version+(write?1:0)});
+   return json({course:row.id,role:group?'group':'admin',state:group?groupView(state,group):state,version:row.version+(changedState?1:0)});
   }
   return json({error:'Gleichzeitige Änderung. Bitte erneut versuchen.'},409);
  } catch(e) {return json({error:e instanceof Error?e.message:'Speichern fehlgeschlagen.'},400);}
