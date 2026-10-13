@@ -25,6 +25,15 @@ export async function handle(req:Request):Promise<Response> {
   if(b?.action==='claimMigration') {
    if(!uid||token||!b.course||typeof b.claim!=='string')return json({error:'Übernahme nicht erlaubt.'},403);
    const hash=await sha(b.claim);
+   const pending=await rest('id=eq.'+encodeURIComponent(b.course)+'&claim_hash=eq.'+hash+'&owner_id=is.null');
+   if(!pending.length)return json({error:'Der Übernahmelink ist ungültig oder bereits verwendet.'},403);
+   const own=await rest('owner_id=eq.'+uid);
+   if(own.length){
+    const existing=own[0];
+    if(existing.version!==0||existing.state.students?.length||existing.state.sessions?.length)return json({error:'Dieses Konto hat bereits einen eingerichteten Kurs. Bitte ein Konto ohne eigenen Kurs verwenden.'},409);
+    const removed=await rest('id=eq.'+existing.id+'&owner_id=eq.'+uid+'&version=eq.0','DELETE');
+    if(!removed.length)return json({error:'Gleichzeitige Änderung. Bitte erneut versuchen.'},409);
+   }
    const rows=await rest('id=eq.'+encodeURIComponent(b.course)+'&claim_hash=eq.'+hash+'&owner_id=is.null','PATCH',{owner_id:uid,claim_hash:null,version:1});
    if(!rows.length)return json({error:'Der Übernahmelink ist ungültig oder bereits verwendet.'},403);
    return json({course:rows[0].id,role:'admin',state:rows[0].state,version:rows[0].version});
