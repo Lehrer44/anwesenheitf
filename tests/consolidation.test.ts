@@ -18,3 +18,10 @@ const other=s.groups[1];mutate(s,{action:'assign',id:ben.id,group:other.id});syn
 s.sessions[2].marks[s.students[1].id]='abwesend';s.sessions[2].marks[s.students[2].id]='entschuldigt';
 writeFileSync('test-formatted-export.xlsx',makeXlsx(s));
 console.log('Consolidation checks passed: future enrollment, past preservation, invalidated reports, next date, shared order, admin-only reorder.');
+
+const resetDate='2026-10-21',otherDays=structuredClone(s.sessions.filter(d=>d.date!==resetDate));
+const reset=s.sessions.find(d=>d.date===resetDate)!;reset.cancelled='Eigener Ausfallgrund';reset.reports[g.id]='sent';
+assert.throws(()=>mutate(s,{action:'resetSession',date:resetDate},g));
+mutate(s,{action:'resetSession',date:resetDate});assert.deepEqual(reset.marks,{});assert.deepEqual(reset.reports,{});assert.equal(reset.cancelled,'');assert.ok(reset.roster.length>0);assert.deepEqual(s.sessions.filter(d=>d.date!==resetDate),otherDays);
+mutate(s,{action:'cancel',date:resetDate,reason:'  Eigener Grund  '});assert.equal(reset.cancelled,'Eigener Grund');assert.throws(()=>mutate(s,{action:'cancel',date:resetDate,reason:'   '}));
+console.log('Day reset checks passed: admin only, clears marks/reports/reason, retains lesson and roster, leaves other dates unchanged.');

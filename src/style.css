@@ -33,3 +33,16 @@
 .matrix .student-band td:first-child{border-left:5px solid var(--group-edge);background:color-mix(in srgb,var(--group-color) 35%,white)}
 .matrix-name{display:flex;align-items:center;justify-content:space-between;gap:12px}.order-controls{display:flex;gap:3px;flex-shrink:0}.order-controls button{border:1px solid #d6dedb;background:white;border-radius:6px;min-height:32px;width:30px;color:#38594b;display:grid;place-items:center;cursor:pointer}.order-controls button:disabled{opacity:.3;cursor:default}.student-actions{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0}.group-mode .student-label{font-size:20px}.group-mode .profile strong{font-size:18px}
 @media(max-width:600px){.consolidated th:first-child,.consolidated td:first-child{min-width:265px;width:265px}.matrix-name{gap:6px}.consolidated .student-label{font-size:16px}.group-divider span{margin:0 8px}.group-panel .leader-name{font-size:21px}.order-controls button{min-height:38px}}
+
+.simplified-overview{grid-template-columns:minmax(0,1fr)}
+.pagehead:has(>.headbuttons:only-child){justify-content:flex-end}
+.matrix.consolidated .student-label{font-size:20px;line-height:1.5}
+.consolidated th:first-child,.consolidated td:first-child{min-width:370px;width:370px}
+.matrix.consolidated th:not(:first-child){text-align:center}
+.matrix.consolidated th>button{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:auto;width:100%;min-height:48px;border:1px solid #9db8ac;border-radius:8px;padding:10px 12px;background:#fff;color:#264b3d;cursor:pointer;font-size:15px}
+.matrix.consolidated th>button:hover,.calendar-button:hover{background:#e6f1eb;border-color:#407e66}
+.calendar-button{border:1px solid #9db8ac;cursor:pointer;font-family:inherit}
+.groupcard p.leader{font-size:20px;line-height:1.5;color:#304b40}
+.groupcard-links{flex-wrap:wrap}.groupcard-links .btn{white-space:normal}
+.section-toolbar:has(>button:only-child){justify-content:flex-end}
+@media(max-width:600px){.matrix.consolidated .student-label{font-size:18px}.consolidated th:first-child,.consolidated td:first-child{min-width:300px;width:300px}.groupcard p.leader{font-size:20px}.headbuttons{flex-wrap:wrap}}
