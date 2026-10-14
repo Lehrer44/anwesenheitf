@@ -4,21 +4,24 @@ Mobile Anwesenheitsverwaltung für wöchentliche Kurse. React-Oberfläche auf Gi
 
 ## Funktionen
 
-- Schülerlisten einfügen, Gruppen anlegen und Schüler zuteilen
+- Schüler direkt in der Anwesenheitsliste hinzufügen, bearbeiten, zuteilen, archivieren oder löschen
+- Farblich getrennte Gruppen; zentrale Reihenfolge innerhalb jeder Gruppe mit ↑ / ↓
+- Gruppenführer immer fett; Gruppenansicht übernimmt die Reihenfolge ohne eigene Sortierfunktion
 - Schüler archivieren oder mit Bestätigung einschließlich aller Anwesenheitseinträge dauerhaft löschen
 - Gruppenführer automatisch als Schüler ihrer eigenen Gruppe führen; vorhandene Schüler werden über ihre ID verknüpft
 - Admin-Korrekturen auf „nicht gemeldet“ zurücksetzen
 - Große Schüler- und Gruppenführernamen in der mobilen Gruppenansicht
 - Eigene widerrufbare Gruppenlinks; Gruppenführer sehen ausschließlich ihre Gruppe
 - Anwesenheit pro Unterrichtsdatum: anwesend, abwesend, entschuldigt
-- Fortlaufende zentrale Tabelle, historische Gruppenzuteilung pro Termin
-- Unterrichtsausfall mit Grund, wieder freigebbar
-- Echte Exceldateien für alle Termine oder Datumsbereiche
+- Fortlaufende zentrale Tabelle; heutige und zukünftige Termine übernehmen Änderungen der Schülerliste, vergangene Termine behalten ihre Besetzung
+- Als Standarddatum wird der erste Termin ab heute (Europe/Berlin) gewählt; ohne kommende Termine der letzte vergangene
+- Unterrichtsausfall direkt durch Klick auf das Datum in der Anwesenheitsliste, mit Grund und Wiederfreigabe
+- Formatierte Exceldateien: farbige Gruppen, fette Gruppenführer, Abwesenheiten rot, Entschuldigungen grau, Anwesenheiten leer und offene Meldungen beschriftet
 - Fiktive Beispieldaten mit eigener Rücksetzfunktion
 
-## Status dieses Umzugspakets
+## Bereitstellung
 
-Die App wurde technisch für GitHub Pages und Supabase vorbereitet. Lokaler Build, Modelltests und Edge-Function-Tests mit simulierten Supabase-Antworten bestehen. Das vorhandene Supabase-Projekt Anwesenheitsliste (Region Irland) ist eingerichtet. Schema und Edge Function sind deployt. Der bestehende Kurs mit 22 Schülern und 5 Gruppen wurde vollständig übertragen und auf Gleichheit geprüft; er wartet auf die geschützte Übernahme durch die Kursleitung. Die Supabase-Sicherheitsprüfung ist ohne Hinweise. Der Quellcode wird im öffentlichen Repository Lehrer44/anwesenheitsapp gepflegt. Der Workflow pages.yml erstellt und veröffentlicht die Website auf GitHub Pages. Die Kursleitung registriert ihr eigenes Konto und übernimmt den vorhandenen Kurs über einen einmaligen privaten Übernahmelink.
+Die Anwendung läuft unter https://lehrer44.github.io/anwesenheitsapp/. Der Quellcode liegt im öffentlichen Repository Lehrer44/anwesenheitsapp. GitHub Actions veröffentlicht die Oberfläche; Supabase speichert die geschützten Kursdaten und führt die autorisierten Änderungen aus.
 
 ## Einrichtung
 

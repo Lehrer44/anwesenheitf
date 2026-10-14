@@ -24,3 +24,12 @@
  .group-mode .profile strong{font-size:18px}
  .group-panel .panelhead label{font-size:13px}.group-panel .panelhead select{font-size:16px}
 }
+
+/* Group bands share their palette with the Excel export. */
+.student-label{font-weight:500!important}.leader,.student-label.leader,.leader-name{font-weight:750!important}
+.consolidated th:first-child,.consolidated td:first-child{min-width:310px;width:310px}
+.band-0{--group-color:#e1efe9;--group-edge:#407e66}.band-1{--group-color:#e3edf9;--group-edge:#477cad}.band-2{--group-color:#f1e6f5;--group-edge:#9962a3}.band-3{--group-color:#fff0d8;--group-edge:#ae7a2f}.band-4{--group-color:#f8e4e8;--group-edge:#b46778}.band-5{--group-color:#e0f1f3;--group-edge:#498c93}
+.matrix .group-divider td{background:var(--group-color);border-left:5px solid var(--group-edge);padding:13px 18px;color:#253b35}.group-divider span{margin:0 18px;font-size:12px}.group-divider .textbutton{font-size:13px}
+.matrix .student-band td:first-child{border-left:5px solid var(--group-edge);background:color-mix(in srgb,var(--group-color) 35%,white)}
+.matrix-name{display:flex;align-items:center;justify-content:space-between;gap:12px}.order-controls{display:flex;gap:3px;flex-shrink:0}.order-controls button{border:1px solid #d6dedb;background:white;border-radius:6px;min-height:32px;width:30px;color:#38594b;display:grid;place-items:center;cursor:pointer}.order-controls button:disabled{opacity:.3;cursor:default}.student-actions{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0}.group-mode .student-label{font-size:20px}.group-mode .profile strong{font-size:18px}
+@media(max-width:600px){.consolidated th:first-child,.consolidated td:first-child{min-width:265px;width:265px}.matrix-name{gap:6px}.consolidated .student-label{font-size:16px}.group-divider span{margin:0 8px}.group-panel .leader-name{font-size:21px}.order-controls button{min-height:38px}}

@@ -27,3 +27,13 @@ assert.equal((await handle(request({action:'claimMigration',course:'course',clai
 assert.equal((await handle(request({action:'claimMigration',course:'course',claim:secret}))).status,200);assert.equal(row.owner_id,'owner');assert.equal(row.claim_hash,null);
 assert.equal((await handle(request({action:'claimMigration',course:'course',claim:secret}))).status,403);
 console.log('Edge checks passed: verified authentication, restricted groups, complete submissions, concurrency, revoked links, single-use migration claim.');
+
+// Enrollment changes must reach existing future sessions through the real handler.
+const future=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+const enrolled=initial();mutate(enrolled,{action:'addStudents',names:'First',group:enrolled.groups[0].id});mutate(enrolled,{action:'session',date:future});row={id:'course',owner_id:'owner',version:0,state:enrolled};
+assert.equal((await handle(request({action:'addStudents',names:'Late student',group:enrolled.groups[0].id}))).status,200);
+const lateView=await(await handle(request(undefined,enrolled.groups[0].token,''))).json();assert.equal(lateView.state.sessions[0].roster.length,2);
+assert.equal((await handle(request({action:'reorder',id:row.state.students[1].id,direction:-1},enrolled.groups[0].token,''))).status,400);
+assert.equal((await handle(request({action:'reorder',id:row.state.students[1].id,direction:-1}))).status,200);
+const sorted=await(await handle(request(undefined,enrolled.groups[0].token,''))).json();assert.equal(sorted.state.sessions[0].roster[0].name,'Late student');
+console.log('Edge enrollment checks passed: late students reach future group lessons, central ordering is enforced.');

@@ -26,6 +26,20 @@ export function normalizeLeaders(s:State){
   chooseLeader(s,g,linked?.name||g.leader,matches[0]?.id);
  }
 }
+export const courseToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+export function nextSession(s:State,today=courseToday()){const dates=s.sessions.map(d=>d.date).sort();return dates.find(d=>d>=today)||dates.at(-1)||'';}
+export function groupedStudents(s:State){return [...s.groups.map(g=>({id:g.id,name:g.name,students:s.students.filter(p=>p.group===g.id)})),{id:'',name:'Ohne Gruppe',students:s.students.filter(p=>!s.groups.some(g=>g.id===p.group))}];}
+export function orderedRoster(s:State,roster:Student[]){const ranks=new Map(s.students.map((p,i)=>[p.id,i]));return [...roster].sort((a,b)=>(ranks.get(a.id)??Infinity)-(ranks.get(b.id)??Infinity));}
+// Keep today's and future lessons in step with enrollment. Past snapshots are immutable.
+export function syncFutureSessions(s:State,today=courseToday()){
+ const active=s.students.filter(p=>!p.archived);
+ for(const d of s.sessions.filter(d=>d.date>=today)){
+  const old=new Map(d.roster.map(p=>[p.id,p]));const current=new Map(active.map(p=>[p.id,p]));
+  for(const g of s.groups){const before=d.roster.filter(p=>p.group===g.id).map(p=>p.id).sort().join(',');const after=active.filter(p=>p.group===g.id).map(p=>p.id).sort().join(',');if(before!==after)delete d.reports[g.id];}
+  for(const id of Object.keys(d.marks)){if(!current.has(id)||old.get(id)?.group!==current.get(id)?.group)delete d.marks[id];}
+  d.roster=active.map(p=>({...p}));
+ }
+}
 export function mutate(s:State,b:any,group?:Group):void {
  const find=()=>{const d=s.sessions.find(x=>x.date===b.date);if(!d)throw Error('Termin nicht gefunden.');return d;};
  if(group){
@@ -49,6 +63,10 @@ export function mutate(s:State,b:any,group?:Group):void {
   s.demo=true;for(let i=0;i<100;i++)s.students.push({id:crypto.randomUUID(),name:`Beispielschüler ${String(i+1).padStart(3,'0')}`,group:s.groups[i%s.groups.length].id});break;}
  case 'clearDemo':{if(!s.demo)throw Error('Dieser Kurs enthält keine Beispieldaten.');s.students=[];s.sessions=[];s.demo=false;break;}
  case 'assign':{const p=s.students.find(x=>x.id===b.id);if(!p)throw Error('Schüler nicht gefunden.');if(b.group&&!s.groups.some(g=>g.id===b.group))throw Error('Gruppe nicht gefunden.');const led=s.groups.find(g=>g.leaderId===p.id);if(led&&b.group!==led.id)throw Error('Ein Gruppenführer bleibt Schüler seiner eigenen Gruppe. Bitte zuerst den Gruppenführer ändern.');p.group=b.group||'';break;}
+ case 'reorder':{
+  const p=s.students.find(p=>p.id===b.id);if(!p||![-1,1].includes(b.direction))throw Error('Ungültige Reihenfolge.');
+  const peers=s.students.filter(x=>x.group===p.group);const target=peers[peers.indexOf(p)+b.direction];if(!target)throw Error('Der Schüler steht bereits am Rand seiner Gruppe.');
+  const a=s.students.indexOf(p),z=s.students.indexOf(target);[s.students[a],s.students[z]]=[s.students[z],s.students[a]];break;}
  case 'renameStudent':{const p=s.students.find(x=>x.id===b.id);const name=String(b.name||'').trim();if(!p||!name||name.length>150)throw Error('Bitte einen gültigen Namen eingeben.');p.name=name;s.groups.filter(g=>g.leaderId===p.id).forEach(g=>g.leader=name);break;}
  case 'archive':{const p=s.students.find(x=>x.id===b.id);if(p){if(!p.archived&&s.groups.some(g=>g.leaderId===p.id))throw Error('Bitte zuerst einen anderen Gruppenführer festlegen, bevor du diesen Schüler archivierst.');p.archived=!p.archived;}break;}
  case 'deleteStudent':{
@@ -82,4 +100,4 @@ export function mutate(s:State,b:any,group?:Group):void {
  default:throw Error('Unbekannte Aktion.');
  }
 }
-export function groupView(s:State,g:Group):State{return {title:s.title,groups:[{id:g.id,name:g.name,leader:g.leader,leaderId:g.leaderId}],students:s.students.filter(x=>x.group===g.id&&!x.archived),sessions:s.sessions.filter(d=>d.roster.some(p=>p.group===g.id)).map(d=>{const roster=d.roster.filter(p=>p.group===g.id);return {...d,roster,marks:Object.fromEntries(roster.filter(p=>d.marks[p.id]).map(p=>[p.id,d.marks[p.id]])),reports:d.reports[g.id]?{[g.id]:d.reports[g.id]}:{}};})};}
+export function groupView(s:State,g:Group):State{return {title:s.title,groups:[{id:g.id,name:g.name,leader:g.leader,leaderId:g.leaderId}],students:s.students.filter(x=>x.group===g.id&&!x.archived),sessions:s.sessions.filter(d=>d.roster.some(p=>p.group===g.id)).map(d=>{const roster=orderedRoster(s,d.roster.filter(p=>p.group===g.id));return {...d,roster,marks:Object.fromEntries(roster.filter(p=>d.marks[p.id]).map(p=>[p.id,d.marks[p.id]])),reports:d.reports[g.id]?{[g.id]:d.reports[g.id]}:{}};})};}
