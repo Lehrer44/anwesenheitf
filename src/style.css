@@ -46,3 +46,10 @@
 .groupcard-links{flex-wrap:wrap}.groupcard-links .btn{white-space:normal}
 .section-toolbar:has(>button:only-child){justify-content:flex-end}
 @media(max-width:600px){.matrix.consolidated .student-label{font-size:18px}.consolidated th:first-child,.consolidated td:first-child{min-width:300px;width:300px}.groupcard p.leader{font-size:20px}.headbuttons{flex-wrap:wrap}}
+
+/* Freeze names only; management controls occupy their own scrolling column. */
+.matrix.consolidated th:first-child,.matrix.consolidated td:first-child{min-width:240px;width:240px;max-width:240px}
+.matrix.consolidated .matrix-name{display:block;white-space:normal;overflow-wrap:anywhere}
+.matrix.consolidated .management-column{min-width:134px;width:134px;padding-left:12px;padding-right:12px}
+.matrix.consolidated .group-divider td{position:static;max-width:none}
+@media(max-width:600px){.matrix.consolidated th:first-child,.matrix.consolidated td:first-child{min-width:180px;width:180px;max-width:180px}}
