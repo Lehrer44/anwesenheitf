@@ -25,7 +25,9 @@ async function main(){
   const projectId=required('MIGRATION_TARGET_PROJECT'),ownerEmail=required('MIGRATION_TARGET_OWNER_EMAIL');
   const app=initializeApp({credential:applicationDefault(),projectId});
   try{
-   const user=await getAuth(app).getUserByEmail(ownerEmail);if(!user.emailVerified)throw Error('Das Firebase-Konto muss zuerst seine E-Mail-Adresse bestätigen.');
+   const user=await getAuth(app).getUserByEmail(ownerEmail);
+   const manuallyApproved=user.customClaims?.administrator===true&&user.customClaims?.manualAccessApproved===true;
+   if(user.disabled||(!user.emailVerified&&!manuallyApproved))throw Error('Das Firebase-Konto muss bestätigt oder ausdrücklich als Administrator manuell freigeschaltet sein.');
    const db=getFirestore(app),courseId='supabase-'+data.course;
    if((await db.doc('courses/'+courseId).get()).exists || (await db.doc('courses/'+courseId+'/private/config').get()).exists)throw Error('Dieser Zielkurs existiert bereits oder enthält einen unvollständigen Import. Er wird nicht überschrieben.');
    const docs=await documentsFor(state,courseId,user.uid,0);

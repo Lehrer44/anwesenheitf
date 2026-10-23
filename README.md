@@ -6,7 +6,7 @@ React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und 
 
 ## Stand und Freischaltung
 
-Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Kursdaten wurden noch nicht aus Supabase übernommen; der Branch ist noch nicht in die aktive Pages-Version gemergt.
+Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Der bestehende Kurs wurde am 24. Oktober 2026 aus Supabase übernommen: 134 Schüler, 7 Gruppen und 14 Termine. Alle 121 Zieldokumente wurden vollständig nachgelesen und verglichen. Die Quelle blieb unverändert. Die alten Gruppenlinks bleiben beim bisherigen Backend; Firebase verwendet neue Links. Der Branch ist noch nicht in die aktive Pages-Version gemergt.
 
 Am echten Firebase-Projekt wurden die anonyme Anmeldung und die Sperren für Kurslisten, fremde Kurse und ungültige Gruppenlinks geprüft. Das temporäre anonyme Prüfkonto wurde entfernt. Die veröffentlichten Regeln wurden mit dem lokalen getesteten Stand verglichen. Die bisherige Supabase-Installation bleibt bis zur Umschaltung aktiv.
 
@@ -102,7 +102,7 @@ MIGRATION_SOURCE_PUBLIC_KEY=DEIN_PUBLISHABLE_KEY
 MIGRATION_SOURCE_EMAIL=KONTO_DES_BISHERIGEN_KURSES
 MIGRATION_SOURCE_PASSWORD=PASSWORT_DES_BISHERIGEN_KONTOS
 MIGRATION_TARGET_PROJECT=FIREBASE_PROJEKT_ID
-MIGRATION_TARGET_OWNER_EMAIL=BESTAETIGTES_FIREBASE_KONTO
+MIGRATION_TARGET_OWNER_EMAIL=BESTAETIGTES_ODER_MANUELL_FREIGEGEBENES_FIREBASE_KONTO
 ```
 
 Zunächst ohne Schreibzugriff auf Kursdaten prüfen:
@@ -124,4 +124,5 @@ Bei einem abgebrochenen Import werden unvollständige Zielinformationen erkannt 
 ## Bisheriges Backend
 
 `supabase/` und die zugehörigen Tests bleiben zur Dokumentation und für den Rückfall auf den bisherigen Stand erhalten. Der neue Browsercode greift nicht mehr auf Supabase zu. Ein vollständiger Rückwechsel erfolgt über den vorherigen Git-Stand und dessen bestehende Konfiguration.
+
 
