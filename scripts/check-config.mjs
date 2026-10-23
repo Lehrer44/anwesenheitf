@@ -1,4 +1,9 @@
+import {readFileSync} from 'node:fs';
 const names=['VITE_FIREBASE_API_KEY','VITE_FIREBASE_AUTH_DOMAIN','VITE_FIREBASE_PROJECT_ID','VITE_FIREBASE_APP_ID'];
-if(names.some(name=>!process.env[name]||process.env[name].includes('YOUR_'))){
- console.error('Vor der Veröffentlichung müssen die vier öffentlichen Firebase-Repository-Variablen eingerichtet sein.');process.exitCode=1;
-}
+const values=names.map(name=>process.env[name]);
+const committed=JSON.parse(readFileSync(new URL('../src/firebase-config.json',import.meta.url),'utf8'));
+const config=values.some(Boolean)?{apiKey:values[0],authDomain:values[1],projectId:values[2],appId:values[3]}:committed;
+if(Object.values(config).some(value=>typeof value!=='string'||!value.trim()||value.includes('YOUR_'))
+ || !/^AIza[A-Za-z0-9_-]+$/.test(config.apiKey||'') || !/^1:[0-9]+:web:[A-Za-z0-9]+$/.test(config.appId||'')){
+ console.error('Ungültige Firebase-Webkonfiguration. Überschreibungen benötigen alle vier öffentlichen VITE_FIREBASE_* Variablen.');process.exitCode=1;
+}else console.log('Öffentliche Firebase-Webkonfiguration geprüft: '+config.projectId);

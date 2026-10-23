@@ -6,22 +6,27 @@ React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und 
 
 ## Stand und Freischaltung
 
-Dieser Branch bereitet die Migration vor. Ein Merge und die Einrichtung des Firebase-Projekts erfolgen erst nach Prüfung. Die bisherige Supabase-Installation wird durch Branch und Pull Request nicht verändert.
+Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Kursdaten wurden noch nicht aus Supabase übernommen; der Branch ist noch nicht in die aktive Pages-Version gemergt.
+
+Am echten Firebase-Projekt wurden die anonyme Anmeldung und die Sperren für Kurslisten, fremde Kurse und ungültige Gruppenlinks geprüft. Das temporäre anonyme Prüfkonto wurde entfernt. Die veröffentlichten Regeln wurden mit dem lokalen getesteten Stand verglichen. Die bisherige Supabase-Installation bleibt bis zur Umschaltung aktiv.
+
+Für dieses Projekt sind die folgenden Einrichtungsschritte 1–6 bereits erledigt. Für ein anderes Zielprojekt:
 
 1. Ein Firebase-Projekt im kostenlosen **Spark**-Tarif erstellen. Kein Abrechnungskonto verknüpfen; weder Blaze noch ein befristetes Guthaben wird benötigt.
-2. Eine Web-App registrieren. Die vier öffentlichen Konfigurationswerte aus der Firebase-Konsole übernehmen.
+2. Eine Web-App registrieren. Die vier öffentlichen Konfigurationswerte in `src/firebase-config.json` übernehmen; keine Admin-Zugangsdaten verwenden.
 3. Cloud Firestore **Standard edition** in einer passenden europäischen Region erstellen. Die Region vor der Erstellung bewusst wählen. Mit gesperrten Regeln beginnen.
 4. Unter Authentication E-Mail/Passwort und anonyme Anmeldung aktivieren. `lehrer44.github.io` als autorisierte Domain hinzufügen; für lokale Entwicklung zusätzlich `localhost`.
 5. Die geprüften Regeln und Indexausnahmen bereitstellen:
    ```sh
-   npx firebase login
-   npx firebase deploy --only firestore:rules,firestore:indexes --project DEINE_PROJEKT_ID
+   npx -y firebase-tools@latest login
+   npx -y firebase-tools@latest deploy --only firestore:rules,firestore:indexes --project DEINE_PROJEKT_ID
    ```
-6. In GitHub unter Settings → Secrets and variables → Actions → Variables setzen:
+6. Die eingecheckte öffentliche Webkonfiguration wird automatisch verwendet. Optional kann ein vollständiger Satz GitHub-Actions-Variablen ein anderes Projekt auswählen:
    - `VITE_FIREBASE_API_KEY`
    - `VITE_FIREBASE_AUTH_DOMAIN`
    - `VITE_FIREBASE_PROJECT_ID`
    - `VITE_FIREBASE_APP_ID`
+   Teilweise gesetzte Variablen werden abgelehnt, damit keine Konfiguration verschiedener Projekte vermischt wird.
 7. Kursleitungs-Konto erstellen und E-Mail bestätigen. Die Seite muss bis zum Abschluss der Datenübernahme in einer getrennten Testumgebung geprüft werden. Beim ersten Login wird noch kein Kurs automatisch angelegt. Name und Gruppenanzahl werden im Anlegedialog gewählt; importierte Kurse erscheinen in der Kursauswahl.
 8. Daten übernehmen, alle Gruppen und historischen Termine vergleichen, anschließend neue Gruppenlinks verteilen. Erst danach den Branch mergen und GitHub Pages umschalten.
 
@@ -59,7 +64,8 @@ Node 24 und Java 21 für den Firestore-Emulator verwenden:
 
 ```sh
 npm ci
-# .env.example nach .env kopieren und die öffentliche Firebase-Konfiguration eintragen
+# Die öffentliche Projektkonfiguration ist bereits eingerichtet.
+# .env ist nur für ein anderes Zielprojekt erforderlich (alle vier Werte setzen).
 npm run dev
 npm test
 npm run test:rules
@@ -69,7 +75,7 @@ npx tsc --noEmit -p tsconfig.firebase.json
 
 Die Regeltests verwenden ausschließlich das lokale Demo-Projekt `demo-kursblick`. Sie prüfen Kursgrenzen, verbotene Listenabfragen, Rollenerhöhung, Pflichtfelder, Statuswerte, vollständige Meldungen, gleichzeitige Änderungen, zukünftige Teilnehmer, Löschungen, Ausfälle und den sofortigen Widerruf alter Links. Die alten Supabase-Edge-Tests bleiben als Regressionstests erhalten.
 
-GitHub Actions führt Modelltests, Regeltests und Build auch für Pull Requests aus. Pull Requests veröffentlichen keine Pages-Version. Ein produktiver Build wird bei fehlender Firebase-Konfiguration abgebrochen.
+GitHub Actions führt Modelltests, Regeltests und Build auch für Pull Requests aus. Pull Requests veröffentlichen keine Pages-Version. Ein produktiver Build wird bei fehlender oder unvollständiger Firebase-Webkonfiguration abgebrochen.
 
 ## Einmalige Datenübernahme ohne manuelles Exportieren
 
