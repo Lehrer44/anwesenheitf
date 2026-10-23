@@ -7,3 +7,11 @@ migration-data/
 *.tar.gz
 test-export.xlsx
 test-formatted-export.xlsx
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+.firebase/
+.firebaserc
+service-account*.json
+firebase-admin*.json
+

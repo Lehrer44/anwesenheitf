@@ -1,20 +1,110 @@
-import {projectUrl,publicKey} from './config';
-const url=(import.meta.env.VITE_SUPABASE_URL as string)||projectUrl;
-const key=(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string)||publicKey;
-const storageKey='kursblick.supabase.session';
-type Session={access_token:string,refresh_token:string,expires_at:number,user:{id:string,email?:string}};
-let refreshPending:Promise<Session|null>|null=null;
-export function configured(){return !!url&&!!key&&!url.includes('YOUR_PROJECT');}
-export function session():Session|null{try{return JSON.parse(localStorage.getItem(storageKey)||'null');}catch{return null;}}
-function save(s:any){const out={...s,expires_at:Date.now()/1000+s.expires_in};localStorage.setItem(storageKey,JSON.stringify(out));return out as Session;}
-async function auth(path:string,body:any){const r=await fetch(url+'/auth/v1/'+path,{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify(body)});const d:any=await r.json();if(!r.ok)throw Error(d.msg||d.error_description||d.message||'Anmeldung fehlgeschlagen.');return d;}
-export async function login(email:string,password:string){save(await auth('token?grant_type=password',{email,password}));}
-export async function signup(email:string,password:string){const d=await auth('signup',{email,password});if(d.access_token){save(d);return true;}return false;}
-export async function logout(){const s=session();if(s)await fetch(url+'/auth/v1/logout',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+s.access_token}}).catch(()=>{});localStorage.removeItem(storageKey);}
-async function activeSession(){let s=session();if(s&&s.expires_at<Date.now()/1000+60){if(!refreshPending)refreshPending=auth('token?grant_type=refresh_token',{refresh_token:s.refresh_token}).then(save).catch(()=>{localStorage.removeItem(storageKey);return null;}).finally(()=>{refreshPending=null;});s=await refreshPending;}return s;}
-export async function courseRequest(body:any,access:{course:string,token:string}){
- if(!configured())throw Error('Supabase ist noch nicht eingerichtet.');
- const s=access.token?null:await activeSession();
- if(!access.token&&!s)throw Error('Bitte anmelden.');
- const r=await fetch(url+'/functions/v1/course'+(access.token?'?course='+encodeURIComponent(access.course):''),{method:body?'POST':'GET',headers:{apikey:key,'Content-Type':'application/json',...(s?{Authorization:'Bearer '+s.access_token}:{}),...(access.token?{'x-group-token':access.token}:{})},...(body?{body:JSON.stringify(body)}:{})});const d:any=await r.json();if(!r.ok)throw Error(d.error||'Verbindung fehlgeschlagen.');return d;
+import {ownerRead,ownerAction} from './firebase-repository';
+import {createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signInWithEmailAndPassword,signInAnonymously,signOut,onAuthStateChanged} from 'firebase/auth';
+import {auth,db,configured} from './firebase';
+import {collection,doc,getDoc,getDocs,onSnapshot,query,runTransaction,serverTimestamp,where,writeBatch,type Unsubscribe} from 'firebase/firestore';
+import {initial,mutate,type State} from './model';
+import {documentsFor,groupState,mergeLessons,tokenHash,type Course,type Channel,type Lesson} from './firebase-data';
+export {configured};
+export type Access={course:string,token:string};
+export type Data={course:string,role:'admin'|'group',state:State,version:number};
+export type CourseChoice={id:string,title:string};
+let manuallyApprovedUid='';
+async function refreshAccountAccess(force=false){
+ const user=auth?.currentUser;
+ if(!user||user.isAnonymous){manuallyApprovedUid='';return;}
+ const {claims}=await user.getIdTokenResult(force);
+ if(auth?.currentUser?.uid===user.uid)manuallyApprovedUid=claims.administrator===true&&claims.manualAccessApproved===true?user.uid:'';
+}
+export const session=()=>auth?.currentUser&&!auth.currentUser.isAnonymous&&(auth.currentUser.emailVerified||manuallyApprovedUid===auth.currentUser.uid)?auth.currentUser:null;
+export async function ready(){if(auth){await auth.authStateReady();await refreshAccountAccess();}}
+export function watchAuth(fn:()=>void){return auth?onAuthStateChanged(auth,()=>{refreshAccountAccess().then(fn).catch(()=>{manuallyApprovedUid='';fn();});}):()=>{};}
+function services(){if(!db||!auth)throw Error('Firebase ist noch nicht eingerichtet.');return {db,auth};}
+export async function login(email:string,password:string){
+ const {auth}=services();const {user}=await signInWithEmailAndPassword(auth,email,password);
+ await refreshAccountAccess(true);
+ if(!user.emailVerified&&!session()){
+  try{await sendEmailVerification(user);}finally{await signOut(auth);manuallyApprovedUid='';}
+  throw Error('Dein Konto benötigt eine E-Mail-Bestätigung oder eine gezielte Administratorfreigabe. Der Versand einer Bestätigungs-E-Mail wurde angefordert.');
+ }
+}
+export async function signup(email:string,password:string){
+ const {auth}=services();const {user}=await createUserWithEmailAndPassword(auth,email,password);
+ try{await sendEmailVerification(user);}finally{await signOut(auth);}return false;
+}
+export async function resetPassword(email:string){if(!email.trim())throw Error('Bitte zuerst die E-Mail-Adresse eingeben.');await sendPasswordResetEmail(services().auth,email);}
+export async function logout(){if(auth)await signOut(auth);}
+async function groupUser(){const {auth}=services();await ready();if(!auth.currentUser)await signInAnonymously(auth);}
+function owner(){const user=session();if(!user)throw Error('Bitte mit einem bestätigten oder ausdrücklich freigeschalteten Konto anmelden.');return user.uid;}
+export async function isAdministrator(){
+ owner();return (await services().auth.currentUser!.getIdTokenResult(true)).claims.administrator===true;
+}
+export async function listCourses():Promise<CourseChoice[]>{
+ const {db}=services(),uid=owner();
+ const result=await getDocs(await isAdministrator()?collection(db,'courses'):query(collection(db,'courses'),where('ownerUid','==',uid)));
+ return result.docs.map(d=>({id:d.id,title:d.data().title as string})).sort((a,b)=>a.title.localeCompare(b.title,'de'));
+}
+export async function createCourse(title:string,groupCount:number){
+ const {db}=services(),uid=owner(),id=crypto.randomUUID(),state=initial(groupCount);state.title=title.trim().slice(0,100)||'Mein Wochenkurs';
+ const docs=await documentsFor(state,id,uid,0),batch=writeBatch(db);
+ for(const [path,data] of docs)batch.set(doc(db,path),data);
+ await batch.commit();return id;
+}
+async function groupRead(access:Access):Promise<Data>{
+ await groupUser();const {db}=services(),hash=await tokenHash(access.token),snap=await getDoc(doc(db,'channels',hash));
+ if(!snap.exists()||!snap.data().active||snap.data().courseId!==access.course)throw Error('Dieser Gruppenlink ist ungültig oder wurde erneuert.');
+ const lessons=await getDocs(collection(db,'channels',hash,'lessons'));
+ return {course:access.course,role:'group',state:groupState(snap.data() as Channel,lessons.docs.map(d=>d.data() as Lesson)),version:0};
+}
+export async function courseRequest(body:any,access:Access):Promise<Data>{
+ if(access.token){
+  if(body){
+   if(body.action!=='submit')throw Error('Nur die eigene Gruppenmeldung ist erlaubt.');
+   await groupUser();const {db}=services(),hash=await tokenHash(access.token);
+   await runTransaction(db,async tx=>{
+    const parent=await tx.get(doc(db,'channels',hash));
+    if(!parent.exists()||!parent.data().active||parent.data().courseId!==access.course)throw Error('Dieser Gruppenlink ist ungültig oder wurde erneuert.');
+    const ref=doc(db,'channels',hash,'lessons',String(body.date)),snap=await tx.get(ref);
+    if(!snap.exists())throw Error('Termin nicht gefunden.');
+    const channel=parent.data() as Channel,state=groupState(channel,[snap.data() as Lesson]);mutate(state,body,state.groups[0]);
+    tx.update(ref,{marks:state.sessions[0].marks,reportedAt:serverTimestamp()});
+   });
+  }
+  return await groupRead(access);
+ }
+ owner();if(!access.course)throw Error('Bitte einen Kurs auswählen.');
+ if(body)await ownerAction(services().db,owner(),body,access.course);const result=await ownerRead(services().db,access.course);
+ return {course:access.course,role:'admin',state:result.state,version:result.meta.version};
+}
+
+export async function watchCourse(access:Access,onChange:(data:Data)=>void,onError:(error:Error)=>void):Promise<Unsubscribe>{
+ const {db}=services(),stops:Unsubscribe[]=[];let stopped=false;
+ const fail=(e:Error)=>{if(!stopped)onError(e);};
+ if(access.token){
+  await groupUser();const hash=await tokenHash(access.token);let channel:Channel|null=null,lessons:Lesson[]|null=null;
+  const emit=()=>{if(!stopped&&channel&&lessons)onChange({course:access.course,role:'group',state:groupState(channel,lessons),version:0});};
+  stops.push(onSnapshot(doc(db,'channels',hash),snap=>{
+   if(!snap.exists()||!snap.data().active||snap.data().courseId!==access.course){channel=null;fail(Error('Dieser Gruppenlink ist ungültig oder wurde erneuert.'));return;}
+   channel=snap.data() as Channel;emit();
+  },fail));
+  stops.push(onSnapshot(collection(db,'channels',hash,'lessons'),snap=>{lessons=snap.docs.map(d=>d.data() as Lesson);emit();},fail));
+ }else{
+  owner();let meta:Course|null=null,config:Pick<State,'students'|'groups'|'demo'>|null=null,sessions:State['sessions']|null=null;
+  let key='',groupStops:Unsubscribe[]=[],lessons=new Map<string,Lesson[]>();
+  const emit=()=>{
+   if(stopped||!meta||!config||!sessions||lessons.size!==config.groups.length)return;
+   onChange({course:access.course,role:'admin',version:meta.version,state:mergeLessons({...config,title:meta.title,sessions},[...lessons.values()].flat())});
+  };
+  stops.push(()=>groupStops.forEach(stop=>stop()));
+  stops.push(onSnapshot(doc(db,'courses',access.course,'private','config'),async snap=>{
+   if(!snap.exists())return;config=snap.data() as typeof config;
+   const groups=(snap.data().groups as State['groups']),next=groups.map(g=>g.token).join('|');
+   if(next===key){emit();return;}key=next;
+   const hashes=await Promise.all(groups.map(g=>tokenHash(g.token!)));if(stopped||key!==next)return;
+   groupStops.forEach(stop=>stop());lessons=new Map();
+   groupStops=hashes.map(hash=>onSnapshot(collection(db,'channels',hash,'lessons'),s=>{lessons.set(hash,s.docs.map(d=>d.data() as Lesson));emit();},fail));
+  },fail));
+  stops.push(onSnapshot(doc(db,'courses',access.course),snap=>{if(snap.exists()){meta=snap.data() as Course;emit();}else fail(Error('Kurs nicht gefunden.'));},fail));
+  stops.push(onSnapshot(collection(db,'courses',access.course,'sessions'),snap=>{sessions=snap.docs.map(d=>d.data() as State['sessions'][number]).sort((a,b)=>a.date.localeCompare(b.date));emit();},fail));
+ }
+ return ()=>{stopped=true;stops.forEach(stop=>stop());};
 }

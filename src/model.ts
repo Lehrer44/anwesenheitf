@@ -3,7 +3,9 @@ export type Group={id:string,name:string,leader:string,leaderId?:string,leaderNe
 export type Status='anwesend'|'abwesend'|'entschuldigt';
 export type Session={date:string,cancelled:string,roster:Student[],marks:Record<string,Status>,reports:Record<string,string>};
 export type State={demo?:boolean,title:string,students:Student[],groups:Group[],sessions:Session[]};
-export function initial():State{return {title:'Mein Wochenkurs',students:[],groups:Array.from({length:5},(_,i)=>({id:crypto.randomUUID(),name:`Gruppe ${i+1}`,leader:'',token:crypto.randomUUID()+crypto.randomUUID()})),sessions:[]};}
+function checkedGroupCount(count:number){if(!Number.isInteger(count)||count<0||count>30)throw Error('Bitte eine ganze Gruppenanzahl von 0 bis 30 wählen.');return count;}
+const newGroup=(index:number):Group=>({id:crypto.randomUUID(),name:`Gruppe ${index+1}`,leader:'',token:crypto.randomUUID()+crypto.randomUUID()});
+export function initial(groupCount=0):State{return {title:'Mein Wochenkurs',students:[],groups:Array.from({length:checkedGroupCount(groupCount)},(_,i)=>newGroup(i)),sessions:[]};}
 const nameKey=(name:string)=>name.trim().normalize('NFKC').toLocaleLowerCase('de');
 function chooseLeader(s:State,g:Group,name:string,id?:string){
  name=name.trim().slice(0,150);
@@ -59,6 +61,7 @@ export function mutate(s:State,b:any,group?:Group):void {
   if(!names.length)throw Error('Bitte mindestens einen Namen eingeben.');
   names.forEach(name=>s.students.push({id:crypto.randomUUID(),name,group:s.groups.some(g=>g.id===b.group)?b.group:''}));break;}
  case 'demo':{
+  if(!s.groups.length)throw Error('Bitte zunächst mindestens eine Gruppe anlegen.');
   if(s.students.length||s.sessions.length)throw Error('Beispieldaten sind nur in einem leeren Kurs möglich.');
   s.demo=true;for(let i=0;i<100;i++)s.students.push({id:crypto.randomUUID(),name:`Beispielschüler ${String(i+1).padStart(3,'0')}`,group:s.groups[i%s.groups.length].id});break;}
  case 'clearDemo':{if(!s.demo)throw Error('Dieser Kurs enthält keine Beispieldaten.');s.students=[];s.sessions=[];s.demo=false;break;}
@@ -83,6 +86,11 @@ export function mutate(s:State,b:any,group?:Group):void {
   active.filter(p=>pinned.has(p.id)).forEach(p=>{p.group=pinned.get(p.id)!;counts.set(p.group,counts.get(p.group)!+1);});
   for(const p of active.filter(p=>!pinned.has(p.id))){const g=s.groups.reduce((a,b)=>counts.get(a.id)!<=counts.get(b.id)!?a:b);p.group=g.id;counts.set(g.id,counts.get(g.id)!+1);}
   break;}
+ case 'groupCount':{
+  const count=checkedGroupCount(b.count),removed=s.groups.slice(count),removedIds=new Set(removed.map(g=>g.id));
+  if(removed.some(g=>g.leader||g.leaderId)||s.students.some(p=>removedIds.has(p.group))||s.sessions.some(d=>d.roster.some(p=>removedIds.has(p.group))||Object.keys(d.reports).some(id=>removedIds.has(id))))throw Error('Die letzten Gruppen enthalten noch Schüler, Gruppenführer oder frühere Termine. Diese Gruppen bleiben erhalten. Nur vollständig unbenutzte Gruppen können entfernt werden.');
+  s.groups=s.groups.slice(0,count);while(s.groups.length<count)s.groups.push(newGroup(s.groups.length));break;
+ }
  case 'group':{
   const name=String(b.name||'').trim().slice(0,100);if(!name)throw Error('Bitte einen Gruppennamen eingeben.');
   let g=s.groups.find(x=>x.id===b.id);const isNew=!g;
@@ -102,3 +110,4 @@ export function mutate(s:State,b:any,group?:Group):void {
  }
 }
 export function groupView(s:State,g:Group):State{return {title:s.title,groups:[{id:g.id,name:g.name,leader:g.leader,leaderId:g.leaderId}],students:s.students.filter(x=>x.group===g.id&&!x.archived),sessions:s.sessions.filter(d=>d.roster.some(p=>p.group===g.id)).map(d=>{const roster=orderedRoster(s,d.roster.filter(p=>p.group===g.id));return {...d,roster,marks:Object.fromEntries(roster.filter(p=>d.marks[p.id]).map(p=>[p.id,d.marks[p.id]])),reports:d.reports[g.id]?{[g.id]:d.reports[g.id]}:{}};})};}
+

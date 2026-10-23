@@ -1,0 +1,136 @@
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  // Prototype data model:
+  // Verified Firebase Auth token: administrator:true, set only by trusted operator.
+  // Approved administrators manage all courses; other owners only their own.
+  // courses/{id}: ownerUid:string (immutable), title:string<=100,
+  //   version:int>=0, dates:list<=1000. Regular owners filter ownerUid; administrators may list all.
+  // courses/{id}/private/config: students:list<=5000, groups:list<=30, demo:bool.
+  // courses/{id}/sessions/{date}: date, cancelled<=200, roster<=5000,
+  //   marks:map of student ID -> status, reports:map<=30. Owner only.
+  // channels/{sha256 bearer token}: ownerUid, courseId, groupId (immutable),
+  //   title, group (no token), students<=5000, active:bool. Never enumerate.
+  // channels/{hash}/lessons/{date}: ownerUid, courseId, groupId, date,
+  //   cancelled, roster, rosterIds, marks, reportedAt:timestamp|null.
+  // Groups can only replace their own complete marks + server timestamp.
+  // A channel path is a bearer credential, just like the existing secret link.
+  function signed() { return request.auth != null; }
+  function verified() {
+   return signed() && request.auth.token.email_verified == true
+    && request.auth.token.firebase.sign_in_provider != 'anonymous';
+  }
+  // Manual approval is account-specific, privileged provisioning, not email verification.
+  function approvedAccount() {
+   return verified() || (signed()
+    && request.auth.token.firebase.sign_in_provider != 'anonymous'
+    && request.auth.token.administrator == true
+    && request.auth.token.manualAccessApproved == true);
+  }
+  function administrator() { return approvedAccount() && request.auth.token.administrator == true; }
+  function manages(uid) { return approvedAccount() && (request.auth.uid==uid || administrator()); }
+  function text(v,max) { return v is string && v.size() <= max; }
+  function id(v) { return v is string && v.matches('^[A-Za-z0-9-]{1,128}$'); }
+  function date(v) { return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+  function owner(courseId) {
+   return manages(get(/databases/$(database)/documents/courses/$(courseId)).data.ownerUid);
+  }
+  function ownerAfter(courseId) {
+   return manages(getAfter(/databases/$(database)/documents/courses/$(courseId)).data.ownerUid);
+  }
+  function validCourse(d) {
+   return d.keys().hasAll(['ownerUid','title','version','dates']) && d.keys().hasOnly(['ownerUid','title','version','dates'])
+    && id(d.ownerUid) && text(d.title,100) && d.title.size()>0
+    && d.version is int && d.version>=0 && d.version<1000000000
+    && d.dates is list && d.dates.size()<=1000 && d.dates.toSet().size()==d.dates.size();
+  }
+  function validConfig(d) {
+   return d.keys().hasAll(['students','groups','demo']) && d.keys().hasOnly(['students','groups','demo'])
+    && d.students is list && d.students.size()<=5000
+    && d.groups is list && d.groups.size()<=30 && d.demo is bool;
+  }
+  function marks(d) {
+   return d is map && d.size()<=5000 && d.values().hasOnly(['anwesend','abwesend','entschuldigt']);
+  }
+  function validSession(d,day) {
+   return d.keys().hasAll(['date','cancelled','roster','marks','reports']) && d.keys().hasOnly(['date','cancelled','roster','marks','reports'])
+    && date(day) && d.date==day && text(d.cancelled,200)
+    && d.roster is list && d.roster.size()<=5000 && marks(d.marks)
+    && d.reports is map && d.reports.size()<=30;
+  }
+  function validGroup(g,groupId) {
+   return g is map && g.keys().hasAll(['id','name','leader']) && g.keys().hasOnly(['id','name','leader','leaderId'])
+    && g.id==groupId && text(g.name,100) && g.name.size()>0 && text(g.leader,150)
+    && (!('leaderId' in g) || id(g.leaderId));
+  }
+  function validChannel(d,hash) {
+   return hash.matches('^[a-f0-9]{64}$')
+    && d.keys().hasAll(['ownerUid','courseId','groupId','title','group','students','active'])
+    && d.keys().hasOnly(['ownerUid','courseId','groupId','title','group','students','active'])
+    && id(d.ownerUid) && id(d.courseId) && id(d.groupId) && text(d.title,100)
+    && validGroup(d.group,d.groupId) && d.students is list && d.students.size()<=5000 && d.active is bool;
+  }
+  function validLesson(d,day) {
+   return d.keys().hasAll(['ownerUid','courseId','groupId','date','cancelled','roster','rosterIds','marks','reportedAt'])
+    && d.keys().hasOnly(['ownerUid','courseId','groupId','date','cancelled','roster','rosterIds','marks','reportedAt'])
+    && id(d.ownerUid) && id(d.courseId) && id(d.groupId) && date(day) && d.date==day && text(d.cancelled,200)
+    && d.roster is list && d.roster.size()<=5000
+    && d.rosterIds is list && d.rosterIds.size()==d.roster.size() && d.rosterIds.toSet().size()==d.rosterIds.size()
+    && marks(d.marks) && d.marks.keys().hasOnly(d.rosterIds)
+    && (d.reportedAt==null || (d.reportedAt is timestamp && d.reportedAt<=request.time));
+  }
+  function activeChannel(hash) {
+   let parent=get(/databases/$(database)/documents/channels/$(hash));
+   return signed() && parent.data.active==true
+    && get(/databases/$(database)/documents/courses/$(parent.data.courseId)).data.ownerUid==parent.data.ownerUid;
+  }
+  function boundToChannel(d,hash) {
+   let parent=getAfter(/databases/$(database)/documents/channels/$(hash));
+   return d.courseId==parent.data.courseId && d.groupId==parent.data.groupId && d.ownerUid==parent.data.ownerUid;
+  }
+  match /courses/{courseId} {
+   allow read: if manages(resource.data.ownerUid);
+   allow create: if approvedAccount() && id(courseId) && validCourse(request.resource.data)
+    && request.resource.data.ownerUid==request.auth.uid && request.resource.data.version==0;
+   allow update: if owner(courseId) && validCourse(request.resource.data)
+    && request.resource.data.ownerUid==resource.data.ownerUid && request.resource.data.version==resource.data.version+1;
+   // No client-side course deletion: prevent orphaned group access.
+   match /private/{configId} {
+    allow read: if configId=='config' && owner(courseId);
+    allow create,update: if configId=='config' && ownerAfter(courseId) && validConfig(request.resource.data);
+   }
+   match /sessions/{day} {
+    allow read: if owner(courseId);
+    allow create,update: if ownerAfter(courseId) && validSession(request.resource.data,day);
+    allow delete: if owner(courseId);
+   }
+  }
+  match /channels/{hash} {
+   // A known high-entropy ID grants get access; anonymous collection scans cannot discover IDs.
+   allow get: if (approvedAccount() && resource==null) || manages(resource.data.ownerUid) || activeChannel(hash);
+   allow list: if manages(resource.data.ownerUid);
+   allow create: if approvedAccount() && validChannel(request.resource.data,hash)
+    && request.resource.data.ownerUid==getAfter(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerUid && ownerAfter(request.resource.data.courseId);
+   allow update: if manages(resource.data.ownerUid)
+    && ownerAfter(resource.data.courseId) && validChannel(request.resource.data,hash)
+    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId','groupId']);
+   allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
+   match /lessons/{day} {
+    allow read: if (approvedAccount() && (resource==null || manages(resource.data.ownerUid))) || activeChannel(hash);
+    allow create: if approvedAccount() && validLesson(request.resource.data,day)
+     && request.resource.data.ownerUid==getAfter(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerUid && ownerAfter(request.resource.data.courseId)
+     && boundToChannel(request.resource.data,hash);
+    allow update: if validLesson(request.resource.data,day) && (
+     (manages(resource.data.ownerUid) && ownerAfter(resource.data.courseId)
+      && boundToChannel(request.resource.data,hash)
+      && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId','groupId','date']))
+     || (activeChannel(hash) && resource.data.cancelled=='' && resource.data.rosterIds.size()>0
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks','reportedAt'])
+      && request.resource.data.marks.keys().hasAll(resource.data.rosterIds)
+      && request.resource.data.reportedAt==request.time));
+    allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
+   }
+  }
+  match /{document=**} { allow read,write: if false; }
+ }
+}

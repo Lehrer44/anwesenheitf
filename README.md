@@ -1,55 +1,128 @@
-# Anwesenheitsapp / Kursblick
+# Kursblick / Anwesenheitsapp – Firebase Spark
 
-Mobile Anwesenheitsverwaltung für wöchentliche Kurse. React-Oberfläche auf GitHub Pages, Supabase Auth, PostgreSQL und eine autorisierte Edge Function.
+Einfache Anwesenheitsverwaltung: Gruppenleitung öffnet einen geheimen Gruppenlink, prüft alle Namen und sendet die Anwesenheit. Die Kursleitung sieht die Meldungen unmittelbar und kann eine Excel-Datei auf den eigenen Rechner herunterladen.
 
-## Funktionen
+React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Beim Anlegen wählt die Kursleitung die Gruppenanzahl selbst (0 bis 30); es gibt keine voreingestellte Anzahl. Die Anzahl lässt sich später pro Kurs ändern. Beim Reduzieren werden nur vollständig unbenutzte Gruppen am Listenende entfernt. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Gezielt freigeschaltete Administratoren können sämtliche Kurse gemeinsam verwalten. Eine normale Registrierung vergibt keine Administratorrechte.
 
-- Schüler direkt in der Anwesenheitsliste hinzufügen, bearbeiten, zuteilen, archivieren oder löschen
-- Farblich getrennte Gruppen; zentrale Reihenfolge innerhalb jeder Gruppe mit ↑ / ↓
-- Gruppenführer immer fett; Gruppenansicht übernimmt die Reihenfolge ohne eigene Sortierfunktion
-- Schüler archivieren oder mit Bestätigung einschließlich aller Anwesenheitseinträge dauerhaft löschen
-- Gruppenführer automatisch als Schüler ihrer eigenen Gruppe führen; vorhandene Schüler werden über ihre ID verknüpft
-- Admin-Korrekturen auf „nicht gemeldet“ zurücksetzen
-- Große Schüler- und Gruppenführernamen in der mobilen Gruppenansicht
-- Eigene widerrufbare Gruppenlinks; Gruppenführer sehen ausschließlich ihre Gruppe
-- Anwesenheit pro Unterrichtsdatum: anwesend, abwesend, entschuldigt
-- Fortlaufende zentrale Tabelle; heutige und zukünftige Termine übernehmen Änderungen der Schülerliste, vergangene Termine behalten ihre Besetzung
-- Als Standarddatum wird der erste Termin ab heute (Europe/Berlin) gewählt; ohne kommende Termine der letzte vergangene
-- Unterrichtsausfall direkt durch Klick auf das Datum in der Anwesenheitsliste, mit Grund und Wiederfreigabe
-- Formatierte Exceldateien: farbige Gruppen, fette Gruppenführer, Abwesenheiten rot, Entschuldigungen grau, Anwesenheiten leer und offene Meldungen beschriftet
-- Fiktive Beispieldaten mit eigener Rücksetzfunktion
+## Stand und Freischaltung
 
-## Bereitstellung
+Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Der bestehende Kurs wurde am 24. Oktober 2026 aus Supabase übernommen: 134 Schüler, 7 Gruppen und 14 Termine. Alle 121 Zieldokumente wurden vollständig nachgelesen und verglichen. Die Quelle blieb unverändert. Die alten Gruppenlinks bleiben beim bisherigen Backend; Firebase verwendet neue Links. Der Branch ist noch nicht in die aktive Pages-Version gemergt.
 
-Die Anwendung läuft unter https://lehrer44.github.io/anwesenheitsapp/. Der Quellcode liegt im öffentlichen Repository Lehrer44/anwesenheitsapp. GitHub Actions veröffentlicht die Oberfläche; Supabase speichert die geschützten Kursdaten und führt die autorisierten Änderungen aus.
+Am echten Firebase-Projekt wurden die anonyme Anmeldung und die Sperren für Kurslisten, fremde Kurse und ungültige Gruppenlinks geprüft. Das temporäre anonyme Prüfkonto wurde entfernt. Die veröffentlichten Regeln wurden mit dem lokalen getesteten Stand verglichen. Die bisherige Supabase-Installation bleibt bis zur Umschaltung aktiv.
 
-## Einrichtung
+Für dieses Projekt sind die folgenden Einrichtungsschritte 1–6 bereits erledigt. Für ein anderes Zielprojekt:
 
-1. Supabase-Projekt in der ausgewählten Organisation und Region erstellen.
-2. `supabase/schema.sql` einmal als Schema-Migration anwenden. Alle Tabellen haben RLS; Schreibrechte sind ausschließlich serverseitig verfügbar.
-3. `supabase/functions/course` mit `verify_jwt = false` deployen. Die Funktion überprüft jeden Aufruf selbst: Kursleitung per Supabase-User-JWT, Gruppenführer per zufälligem Gruppenlink. Der Service-Schlüssel bleibt ausschließlich in der Supabase-Laufzeit.
-4. In GitHub Actions die Repository-Variablen `VITE_SUPABASE_URL` und `VITE_SUPABASE_PUBLISHABLE_KEY` setzen. Beide sind für den Browser bestimmt; niemals Service-Schlüssel eintragen.
-5. GitHub Pages auf GitHub Actions einstellen. Standardbasis ist `/anwesenheitsapp/`; bei eigener Domain `vite.config.ts` anpassen.
-6. Supabase Auth Site URL und zulässige Redirect-URL auf die neue Pages-Adresse einstellen. Kursleitung registriert ihr eigenes Konto und bestätigt die E-Mail-Adresse.
-7. Vorhandenen Kurs über einen einmaligen Übernahmelink übertragen und vollständig prüfen. Daten und geheime Gruppenlinks niemals in GitHub-Dateien oder Actions-Ausgaben speichern.
+1. Ein Firebase-Projekt im kostenlosen **Spark**-Tarif erstellen. Kein Abrechnungskonto verknüpfen; weder Blaze noch ein befristetes Guthaben wird benötigt.
+2. Eine Web-App registrieren. Die vier öffentlichen Konfigurationswerte in `src/firebase-config.json` übernehmen; keine Admin-Zugangsdaten verwenden.
+3. Cloud Firestore **Standard edition** in einer passenden europäischen Region erstellen. Die Region vor der Erstellung bewusst wählen. Mit gesperrten Regeln beginnen.
+4. Unter Authentication E-Mail/Passwort und anonyme Anmeldung aktivieren. `lehrer44.github.io` als autorisierte Domain hinzufügen; für lokale Entwicklung zusätzlich `localhost`.
+5. Die geprüften Regeln und Indexausnahmen bereitstellen:
+   ```sh
+   npx -y firebase-tools@latest login
+   npx -y firebase-tools@latest deploy --only firestore:rules,firestore:indexes --project DEINE_PROJEKT_ID
+   ```
+6. Die eingecheckte öffentliche Webkonfiguration wird automatisch verwendet. Optional kann ein vollständiger Satz GitHub-Actions-Variablen ein anderes Projekt auswählen:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_APP_ID`
+   Teilweise gesetzte Variablen werden abgelehnt, damit keine Konfiguration verschiedener Projekte vermischt wird.
+7. Kursleitungs-Konto erstellen und E-Mail bestätigen. Die Seite muss bis zum Abschluss der Datenübernahme in einer getrennten Testumgebung geprüft werden. Beim ersten Login wird noch kein Kurs automatisch angelegt. Name und Gruppenanzahl werden im Anlegedialog gewählt; importierte Kurse erscheinen in der Kursauswahl.
+8. Daten übernehmen, alle Gruppen und historischen Termine vergleichen, anschließend neue Gruppenlinks verteilen. Erst danach den Branch mergen und GitHub Pages umschalten.
 
-Die Pages-Website kann öffentlich ausgeliefert werden; Schülerdaten werden nur nach serverseitiger Berechtigungsprüfung ausgegeben. Ein öffentliches Repository enthält ausschließlich Quellcode und dokumentierte öffentliche Konfiguration.
+Die Firebase-Webkonfiguration darf im Browser sichtbar sein. **Service-Account-Schlüssel, Admin-SDK-Zugangsdaten und Supabase-Service-Role-Keys gehören niemals in VITE-Variablen, Repository-Dateien oder Actions-Logs.** Es gibt keinen automatischen Rückgriff auf das bisherige Supabase-Projekt.
 
-## Lokal
+## Kostenloser Betrieb
+
+Die Anwendung verwendet keine Cloud Functions, kein Cloud Storage, keinen Dateiupload, keinen kostenpflichtigen Auth-Anbieter und kein Firebase App Hosting. Excel wird im Browser erzeugt und nur lokal heruntergeladen.
+
+Spark hat feste Nutzungskontingente. Für Firestore Standard sind dies derzeit 1 GiB Daten, 50.000 Lesevorgänge und 20.000 Schreibvorgänge pro Tag. Die Kontingente gelten für alle Kurse des Projekts zusammen. Wenige Gruppen und Kursleitungen sind ein kleiner Anwendungsfall; die tatsächliche Nutzung muss nach der Einrichtung geprüft werden. Firebase garantiert mit Spark keine unbegrenzte Verfügbarkeit. Eine mit Supabase vergleichbare Sieben-Tage-Inaktivitätspause ist für Firestore nicht dokumentiert.
+
+Die Ansichten verwenden Echtzeit-Abonnements statt 20-Sekunden-Polling. Beim Öffnen wird die Kurshistorie geladen; Bearbeitungen der Kursleitung lesen den betroffenen Kurs im Rahmen einer Transaktion erneut. Sehr große Historien benötigen später eine Archivierung/gezieltere Abfragen. Einzelne Aktionen sind auf 400 geänderte Dokumente und Dokumente vorsorglich auf etwa 850 kB begrenzt; vor Überschreitung wird ohne Teiländerungen abgebrochen.
+
+Aktuelle Bedingungen: https://firebase.google.com/pricing und https://firebase.google.com/docs/projects/billing/firebase-pricing-plans
+
+## Gemeinsame Administratoren
+
+Jede Person registriert auf der App-Seite ihr eigenes Konto und bestätigt ihre E-Mail-Adresse. Die drei vorgesehenen Administratoren erhalten einmalig über einen vertrauenswürdigen Projektzugang das Firebase-Auth-Custom-Claim `administrator: true`. Dafür dient das Admin SDK oder die Firebase CLI-Funktion zur Claims-Verwaltung; niemals der Browsercode. Vorhandene andere Claims müssen erhalten bleiben. Keine E-Mail-Adressen oder Rollenlisten im Frontend hinterlegen. Nach der Freischaltung neu anmelden oder die App neu laden; die Kursauswahl fordert ein frisches ID-Token an.
+
+Bei ausbleibenden Bestätigungs-E-Mails darf eine vertrauenswürdige Projektadministration ein konkret zugeordnetes bestehendes Konto zusätzlich mit `manualAccessApproved: true` freigeben. Nur die Kombination aus `administrator: true` und `manualAccessApproved: true` erlaubt einem nicht anonymen Konto den Zugang ohne E-Mail-Bestätigung. Eine normale Registrierung, eine bloße Administratorrolle bei unbestätigter Adresse oder ein einzelnes Freigabe-Claim genügen nicht. Der Firebase-Status `emailVerified` wird dabei ausdrücklich nicht verändert: Die manuelle Kontofreigabe bestätigt nicht den Besitz des Postfachs. Vor Freigabe muss die zuständige Person das Konto außerhalb des fehlgeschlagenen E-Mail-Verfahrens eindeutig zuordnen. Diese Ausnahme darf niemals pauschal an neue Registrierungen vergeben werden.
+
+Die Freigabe behebt nicht die Mailzustellung. Insbesondere kann auch ein späteres Zurücksetzen des Passworts per E-Mail scheitern. Ein vergessenes Passwort muss dann über die vertrauenswürdige Projektadministration wiederhergestellt werden. Zugangsdaten dürfen niemals in Chat, Frontend oder Repository abgelegt werden.
+
+Diese Rolle erlaubt Lesen, Anlegen und Bearbeiten aller Kurse einschließlich Gruppen, Terminen und Exporten. Reguläre Kursleitungen behalten ausschließlich ihre eigenen Kurse. Gruppenlinks bleiben auf ihre Gruppe begrenzt. Auch Administratoren können im Browser keine Rollen verteilen, ändern oder auflisten. Zum Widerruf das Claim über denselben vertrauenswürdigen Zugang auf `false` setzen. Bereits ausgestellte ID-Tokens bleiben bis zu ihrem Ablauf (bis zu einer Stunde) gültig; eine erneute Anmeldung/Token-Erneuerung übernimmt den Widerruf. Bereits gelesene Daten können nicht rückwirkend zurückgerufen werden.
+
+Die ursprüngliche `ownerUid` eines Kurses bleibt bei gemeinsamer Bearbeitung unverändert. Bestehende Daten benötigen dafür keine Umschreibung. Gleichzeitige Änderungen mehrerer Administratoren und Gruppen verwenden dieselben Transaktionen wie bisher. Die Administratorrolle benötigt weder Cloud Functions noch einen kostenpflichtigen Tarif.
+
+## Berechtigungen und Datenmodell
+
+- Firebase Auth: ausschließlich serverseitig vergebene gemeinsame Rolle `administrator: true`, zusätzlich bestätigte E-Mail oder ausdrückliche manuelle Kontofreigabe erforderlich.
+- `courses/{id}`: unveränderliche Kursleitung, Titel, Version, Terminliste.
+- `courses/{id}/private/config`: Schüler, Gruppen, geheime Tokens; nur die Kursleitung und freigeschaltete Administratoren.
+- `courses/{id}/sessions/{date}`: vollständige historische Teilnehmerliste pro Termin; nur die Kursleitung und freigeschaltete Administratoren.
+- `channels/{SHA256(token)}`: begrenzte Gruppenansicht ohne andere Gruppen oder geheime Tokens.
+- `channels/{hash}/lessons/{date}`: Teilnehmer und Meldung genau dieser Gruppe an diesem Termin.
+
+Ein Gruppenlink ist ein **geheimer Zugangsschlüssel**, keine persönliche Identitätsprüfung. Wer ihn besitzt, darf die betreffende Gruppe lesen und melden. Im Hintergrund erfolgt eine anonyme Firebase-Anmeldung; es gibt kein zusätzliches Passwortformular. Die unvorhersehbaren Kanaladressen dürfen nicht aufgelistet werden. Tokens stehen weiterhin ausschließlich im URL-Fragment und werden nicht als Seitenadresse an GitHub Pages übertragen.
+
+Gruppen dürfen nur vollständige Meldungen für die eigenen Teilnehmer mit gültigen Statuswerten und Serverzeitstempel ersetzen. Sie dürfen keine Namen, Zuteilungen, Berechtigungen oder Ausfälle verändern. Ausgefallene Termine und veraltete Teilnehmerlisten werden geprüft. Beim Erneuern eines Links werden der alte Kanal und seine Termindokumente atomar entfernt. Ein bereits geöffnetes Gruppenfenster erhält dann einen Zugriffsfehler.
+
+Die Kursleitung führt Meldungen und historische Teilnehmerlisten für Anzeige/Export zusammen. Transaktionen schützen gleichzeitige Meldungen vor Überschreiben. Das Firebase SDK verwendet hier nur den Speichercache, keine dauerhafte Firestore-Datenablage im Browser.
+
+Die Security Rules sind ein getesteter Prototyp. Vor breiter Verteilung der Links sind insbesondere die Regeln und die reale Firebase-Konfiguration noch einmal zu prüfen. Die Prüfung ersetzt keine Zusage vollständiger Fehlerfreiheit.
+
+## Lokal und Tests
+
+Node 24 und Java 21 für den Firestore-Emulator verwenden:
 
 ```sh
 npm ci
-cp .env.example .env
-# Öffentliche Supabase-Konfiguration in .env ergänzen
+# Die öffentliche Projektkonfiguration ist bereits eingerichtet.
+# .env ist nur für ein anderes Zielprojekt erforderlich (alle vier Werte setzen).
 npm run dev
 npm test
+npm run test:rules
 npm run build
+npx tsc --noEmit -p tsconfig.firebase.json
 ```
 
-## Datenübernahme
+Die Regeltests verwenden ausschließlich das lokale Demo-Projekt `demo-kursblick`. Sie prüfen Kursgrenzen, verbotene Listenabfragen, Rollenerhöhung, Pflichtfelder, Statuswerte, vollständige Meldungen, gleichzeitige Änderungen, zukünftige Teilnehmer, Löschungen, Ausfälle und den sofortigen Widerruf alter Links. Die alten Supabase-Edge-Tests bleiben als Regressionstests erhalten.
 
-Vollständiges JSON aus dem bisherigen Kurs exportieren. Einen Importdatensatz mit bestehender Kurs-ID, `owner_id = null`, zufälligem Claim-Schlüssel (mindestens 256 Bit), dessen SHA-256 als `claim_hash`, und vollständigem `state` anlegen. Der Claim-Schlüssel wird nur der Kursleitung übermittelt. Nach Anmeldung übernimmt `#course=KURS_ID&migration=CLAIM` den Kurs einmalig und entfernt den Schlüssel aus der URL. Noch nicht übernommene Kurse sind über Gruppenlinks nicht erreichbar. Alte Gruppenlinks müssen wegen der neuen Website-Adresse erneut verteilt werden.
+GitHub Actions führt Modelltests, Regeltests und Build auch für Pull Requests aus. Pull Requests veröffentlichen keine Pages-Version. Ein produktiver Build wird bei fehlender oder unvollständiger Firebase-Webkonfiguration abgebrochen.
 
-## Betrieb
+## Einmalige Datenübernahme ohne manuelles Exportieren
 
-Die Anwendung funktioniert nach dem Umzug ohne ChatGPT-Abo. Die Verfügbarkeit hängt von GitHub und Supabase ab. Free-Projekte können bei Inaktivität pausieren. Regelmäßige vollständige Datenbanksicherungen ergänzen den Excel-Export. Der Excel-Export allein enthält nicht alle Verwaltungsdaten. Für echte Schülerdaten sind Datenschutzfreigabe, Aufbewahrungsregeln und passende Infrastruktur erforderlich.
+`scripts/migrate-course.ts` liest den vollständigen bisherigen Kurs über die bestehende Supabase-Funktion. Es verwendet dafür die normale Anmeldung der bisherigen Kursleitung, keinen Supabase-Service-Role-Key. Im Firebase-Ziel werden einmalig lokale Admin-Berechtigungen über Application Default Credentials benötigt. Diese Zugangsdaten bleiben außerhalb des Repositories.
+
+Umgebungsvariablen für den lokalen Prozess:
+
+```text
+MIGRATION_SOURCE_URL=https://DEIN_PROJEKT.supabase.co
+MIGRATION_SOURCE_PUBLIC_KEY=DEIN_PUBLISHABLE_KEY
+MIGRATION_SOURCE_EMAIL=KONTO_DES_BISHERIGEN_KURSES
+MIGRATION_SOURCE_PASSWORD=PASSWORT_DES_BISHERIGEN_KONTOS
+MIGRATION_TARGET_PROJECT=FIREBASE_PROJEKT_ID
+MIGRATION_TARGET_OWNER_EMAIL=BESTAETIGTES_ODER_MANUELL_FREIGEGEBENES_FIREBASE_KONTO
+```
+
+Zunächst ohne Schreibzugriff auf Kursdaten prüfen:
+
+```sh
+node --experimental-strip-types scripts/migrate-course.ts
+```
+
+Erst nach Freigabe übernehmen:
+
+```sh
+node --experimental-strip-types scripts/migrate-course.ts --commit
+```
+
+Das Werkzeug zeigt nur Anzahlen und die Zielprojekt-ID, keine Namen, Passwörter, Tokens oder Gruppenlinks. Es überschreibt keinen vorhandenen Zielkurs. Neue Links werden erzeugt; vollständige Daten werden zuerst verdeckt angelegt und erst am Ende freigeschaltet. Anschließend wird jedes Dokument nachgelesen und mit der Quelle verglichen. Supabase-Daten bleiben erhalten. Während des Umstiegs müssen Meldungen und Bearbeitungen kurz pausieren, damit nach der Übernahme keine neuen Änderungen im alten System zurückbleiben.
+
+Bei einem abgebrochenen Import werden unvollständige Zielinformationen erkannt und ein erneuter Import sicher abgelehnt. Diese müssen vor einem neuen Versuch gezielt bereinigt werden. Supabase bleibt bis zur erfolgreichen Prüfung die maßgebliche Quelle.
+
+## Bisheriges Backend
+
+`supabase/` und die zugehörigen Tests bleiben zur Dokumentation und für den Rückfall auf den bisherigen Stand erhalten. Der neue Browsercode greift nicht mehr auf Supabase zu. Ein vollständiger Rückwechsel erfolgt über den vorherigen Git-Stand und dessen bestehende Konfiguration.
+
+
