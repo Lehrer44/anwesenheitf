@@ -19,6 +19,28 @@ const report={...lesson,marks:{[ids[0]]:'anwesend' as const,[ids[1]]:'abwesend' 
 const merged=mergeLessons(state,[report]);assert.equal(merged.sessions[0].marks[ids[1]],'abwesend');
 assert.ok(merged.sessions[0].reports[state.groups[0].id]);assert.deepEqual(state.sessions[0].marks,{});
 const view=groupState(docs.get('channels/'+hash) as Channel,[report]);assert.equal(view.students.length,2);assert.equal(view.sessions[0].roster.length,2);assert.equal(view.groups[0].token,undefined);
+// Renaming propagates to every existing group channel without replacing links or attendance.
+const renamed=structuredClone(merged),original=structuredClone(merged);
+mutate(renamed,{action:'title',title:'  Deutsch – Abendkurs  '});
+assert.deepEqual(renamed,{...original,title:'Deutsch – Abendkurs'});
+const beforeRename=await documentsFor(original,'course','owner',0);
+const afterRename=await documentsFor(renamed,'course','owner',1);
+const renameChanges=changesBetween(beforeRename,afterRename);
+assert.deepEqual(renameChanges.deletes,[]);
+assert.deepEqual(renameChanges.sets.map(([path])=>path).sort(),['courses/course',...await Promise.all(state.groups.map(async g=>'channels/'+await tokenHash(g.token!)))].sort());
+for(const [path,value] of afterRename){
+ if(path.startsWith('channels/')&&!path.includes('/lessons/')){
+  assert.equal(groupState(value as Channel,[]).title,'Deutsch – Abendkurs');
+  assert.deepEqual(value,{...beforeRename.get(path),title:'Deutsch – Abendkurs'});
+ }
+}
+for(const title of ['', '   ', '\t\n', 'x'.repeat(101)]){
+ assert.throws(()=>mutate(renamed,{action:'title',title}),/Kursnamen/);
+ assert.equal(renamed.title,'Deutsch – Abendkurs');
+}
+assert.throws(()=>mutate(renamed,{action:'title',title:'Unerlaubt'},renamed.groups[0]));
+mutate(renamed,{action:'title',title:'x'.repeat(100)});assert.equal(renamed.title.length,100);
+const noGroups=initial();mutate(noGroups,{action:'title',title:'Einzelkurs'});assert.equal(noGroups.title,'Einzelkurs');
 const stale={...report,rosterIds:['removed']};assert.deepEqual(mergeLessons(state,[stale]).sessions[0].marks,{});
 const rotated=structuredClone(merged);mutate(rotated,{action:'rotate',id:state.groups[0].id});
 const next=await documentsFor(rotated,'course','owner',1),changes=changesBetween(docs,next);
