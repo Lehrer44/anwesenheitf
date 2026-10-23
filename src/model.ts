@@ -53,7 +53,10 @@ export function mutate(s:State,b:any,group?:Group):void {
   ids.forEach(id=>d.marks[id]=b.marks[id]);d.reports[group.id]=new Date().toISOString();return;
  }
  switch(b.action){
- case 'title':s.title=String(b.title||'').trim().slice(0,100)||'Mein Wochenkurs';break;
+ case 'title':{
+  const title=String(b.title||'').trim();
+  if(!title||title.length>100)throw Error('Bitte einen Kursnamen mit 1 bis 100 Zeichen eingeben.');
+  s.title=title;break;}
  case 'addStudents':{
   if(s.demo)throw Error('Bitte zuerst die Beispieldaten entfernen, bevor du echte Namen hinzufügst.');
   const names=String(b.names||'').split('\n').map(x=>x.trim()).filter(Boolean);
