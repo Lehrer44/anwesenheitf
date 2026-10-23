@@ -1,0 +1,14 @@
+{
+ "indexes": [],
+ "fieldOverrides": [
+  {"collectionGroup":"lessons","fieldPath":"roster","indexes":[]},
+  {"collectionGroup":"lessons","fieldPath":"rosterIds","indexes":[]},
+  {"collectionGroup":"lessons","fieldPath":"marks","indexes":[]},
+  {"collectionGroup":"sessions","fieldPath":"roster","indexes":[]},
+  {"collectionGroup":"sessions","fieldPath":"marks","indexes":[]},
+  {"collectionGroup":"sessions","fieldPath":"reports","indexes":[]},
+  {"collectionGroup":"private","fieldPath":"students","indexes":[]},
+  {"collectionGroup":"private","fieldPath":"groups","indexes":[]},
+  {"collectionGroup":"channels","fieldPath":"students","indexes":[]}
+ ]
+}

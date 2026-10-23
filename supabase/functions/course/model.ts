@@ -3,7 +3,7 @@ export type Group={id:string,name:string,leader:string,leaderId?:string,leaderNe
 export type Status='anwesend'|'abwesend'|'entschuldigt';
 export type Session={date:string,cancelled:string,roster:Student[],marks:Record<string,Status>,reports:Record<string,string>};
 export type State={demo?:boolean,title:string,students:Student[],groups:Group[],sessions:Session[]};
-export function initial():State{return {title:'Mein Wochenkurs',students:[],groups:Array.from({length:5},(_,i)=>({id:crypto.randomUUID(),name:`Gruppe ${i+1}`,leader:'',token:crypto.randomUUID()+crypto.randomUUID()})),sessions:[]};}
+export function initial():State{return {title:'Mein Wochenkurs',students:[],groups:Array.from({length:7},(_,i)=>({id:crypto.randomUUID(),name:`Gruppe ${i+1}`,leader:'',token:crypto.randomUUID()+crypto.randomUUID()})),sessions:[]};}
 const nameKey=(name:string)=>name.trim().normalize('NFKC').toLocaleLowerCase('de');
 function chooseLeader(s:State,g:Group,name:string,id?:string){
  name=name.trim().slice(0,150);
@@ -102,3 +102,4 @@ export function mutate(s:State,b:any,group?:Group):void {
  }
 }
 export function groupView(s:State,g:Group):State{return {title:s.title,groups:[{id:g.id,name:g.name,leader:g.leader,leaderId:g.leaderId}],students:s.students.filter(x=>x.group===g.id&&!x.archived),sessions:s.sessions.filter(d=>d.roster.some(p=>p.group===g.id)).map(d=>{const roster=orderedRoster(s,d.roster.filter(p=>p.group===g.id));return {...d,roster,marks:Object.fromEntries(roster.filter(p=>d.marks[p.id]).map(p=>[p.id,d.marks[p.id]])),reports:d.reports[g.id]?{[g.id]:d.reports[g.id]}:{}};})};}
+
