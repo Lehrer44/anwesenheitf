@@ -46,13 +46,17 @@ Aktuelle Bedingungen: https://firebase.google.com/pricing und https://firebase.g
 
 Jede Person registriert auf der App-Seite ihr eigenes Konto und bestätigt ihre E-Mail-Adresse. Die drei vorgesehenen Administratoren erhalten einmalig über einen vertrauenswürdigen Projektzugang das Firebase-Auth-Custom-Claim `administrator: true`. Dafür dient das Admin SDK oder die Firebase CLI-Funktion zur Claims-Verwaltung; niemals der Browsercode. Vorhandene andere Claims müssen erhalten bleiben. Keine E-Mail-Adressen oder Rollenlisten im Frontend hinterlegen. Nach der Freischaltung neu anmelden oder die App neu laden; die Kursauswahl fordert ein frisches ID-Token an.
 
+Bei ausbleibenden Bestätigungs-E-Mails darf eine vertrauenswürdige Projektadministration ein konkret zugeordnetes bestehendes Konto zusätzlich mit `manualAccessApproved: true` freigeben. Nur die Kombination aus `administrator: true` und `manualAccessApproved: true` erlaubt einem nicht anonymen Konto den Zugang ohne E-Mail-Bestätigung. Eine normale Registrierung, eine bloße Administratorrolle bei unbestätigter Adresse oder ein einzelnes Freigabe-Claim genügen nicht. Der Firebase-Status `emailVerified` wird dabei ausdrücklich nicht verändert: Die manuelle Kontofreigabe bestätigt nicht den Besitz des Postfachs. Vor Freigabe muss die zuständige Person das Konto außerhalb des fehlgeschlagenen E-Mail-Verfahrens eindeutig zuordnen. Diese Ausnahme darf niemals pauschal an neue Registrierungen vergeben werden.
+
+Die Freigabe behebt nicht die Mailzustellung. Insbesondere kann auch ein späteres Zurücksetzen des Passworts per E-Mail scheitern. Ein vergessenes Passwort muss dann über die vertrauenswürdige Projektadministration wiederhergestellt werden. Zugangsdaten dürfen niemals in Chat, Frontend oder Repository abgelegt werden.
+
 Diese Rolle erlaubt Lesen, Anlegen und Bearbeiten aller Kurse einschließlich Gruppen, Terminen und Exporten. Reguläre Kursleitungen behalten ausschließlich ihre eigenen Kurse. Gruppenlinks bleiben auf ihre Gruppe begrenzt. Auch Administratoren können im Browser keine Rollen verteilen, ändern oder auflisten. Zum Widerruf das Claim über denselben vertrauenswürdigen Zugang auf `false` setzen. Bereits ausgestellte ID-Tokens bleiben bis zu ihrem Ablauf (bis zu einer Stunde) gültig; eine erneute Anmeldung/Token-Erneuerung übernimmt den Widerruf. Bereits gelesene Daten können nicht rückwirkend zurückgerufen werden.
 
 Die ursprüngliche `ownerUid` eines Kurses bleibt bei gemeinsamer Bearbeitung unverändert. Bestehende Daten benötigen dafür keine Umschreibung. Gleichzeitige Änderungen mehrerer Administratoren und Gruppen verwenden dieselben Transaktionen wie bisher. Die Administratorrolle benötigt weder Cloud Functions noch einen kostenpflichtigen Tarif.
 
 ## Berechtigungen und Datenmodell
 
-- Firebase Auth: ausschließlich serverseitig vergebene gemeinsame Rolle `administrator: true`, zusätzlich bestätigte E-Mail erforderlich.
+- Firebase Auth: ausschließlich serverseitig vergebene gemeinsame Rolle `administrator: true`, zusätzlich bestätigte E-Mail oder ausdrückliche manuelle Kontofreigabe erforderlich.
 - `courses/{id}`: unveränderliche Kursleitung, Titel, Version, Terminliste.
 - `courses/{id}/private/config`: Schüler, Gruppen, geheime Tokens; nur die Kursleitung und freigeschaltete Administratoren.
 - `courses/{id}/sessions/{date}`: vollständige historische Teilnehmerliste pro Termin; nur die Kursleitung und freigeschaltete Administratoren.

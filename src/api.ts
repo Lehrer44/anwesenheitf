@@ -8,13 +8,24 @@ export {configured};
 export type Access={course:string,token:string};
 export type Data={course:string,role:'admin'|'group',state:State,version:number};
 export type CourseChoice={id:string,title:string};
-export const session=()=>auth?.currentUser&&!auth.currentUser.isAnonymous&&auth.currentUser.emailVerified?auth.currentUser:null;
-export async function ready(){if(auth)await auth.authStateReady();}
-export function watchAuth(fn:()=>void){return auth?onAuthStateChanged(auth,fn):()=>{};}
+let manuallyApprovedUid='';
+async function refreshAccountAccess(force=false){
+ const user=auth?.currentUser;
+ if(!user||user.isAnonymous){manuallyApprovedUid='';return;}
+ const {claims}=await user.getIdTokenResult(force);
+ if(auth?.currentUser?.uid===user.uid)manuallyApprovedUid=claims.administrator===true&&claims.manualAccessApproved===true?user.uid:'';
+}
+export const session=()=>auth?.currentUser&&!auth.currentUser.isAnonymous&&(auth.currentUser.emailVerified||manuallyApprovedUid===auth.currentUser.uid)?auth.currentUser:null;
+export async function ready(){if(auth){await auth.authStateReady();await refreshAccountAccess();}}
+export function watchAuth(fn:()=>void){return auth?onAuthStateChanged(auth,()=>{refreshAccountAccess().then(fn).catch(()=>{manuallyApprovedUid='';fn();});}):()=>{};}
 function services(){if(!db||!auth)throw Error('Firebase ist noch nicht eingerichtet.');return {db,auth};}
 export async function login(email:string,password:string){
  const {auth}=services();const {user}=await signInWithEmailAndPassword(auth,email,password);
- if(!user.emailVerified){await sendEmailVerification(user);await signOut(auth);throw Error('Bitte bestätige zuerst deine E-Mail-Adresse. Eine Bestätigungs-E-Mail wurde erneut versendet.');}
+ await refreshAccountAccess(true);
+ if(!user.emailVerified&&!session()){
+  try{await sendEmailVerification(user);}finally{await signOut(auth);manuallyApprovedUid='';}
+  throw Error('Dein Konto benötigt eine E-Mail-Bestätigung oder eine gezielte Administratorfreigabe. Der Versand einer Bestätigungs-E-Mail wurde angefordert.');
+ }
 }
 export async function signup(email:string,password:string){
  const {auth}=services();const {user}=await createUserWithEmailAndPassword(auth,email,password);
@@ -23,7 +34,7 @@ export async function signup(email:string,password:string){
 export async function resetPassword(email:string){if(!email.trim())throw Error('Bitte zuerst die E-Mail-Adresse eingeben.');await sendPasswordResetEmail(services().auth,email);}
 export async function logout(){if(auth)await signOut(auth);}
 async function groupUser(){const {auth}=services();await ready();if(!auth.currentUser)await signInAnonymously(auth);}
-function owner(){const user=session();if(!user?.emailVerified)throw Error('Bitte als Kursleitung mit bestätigter E-Mail-Adresse anmelden.');return user.uid;}
+function owner(){const user=session();if(!user)throw Error('Bitte mit einem bestätigten oder ausdrücklich freigeschalteten Konto anmelden.');return user.uid;}
 export async function isAdministrator(){
  owner();return (await services().auth.currentUser!.getIdTokenResult(true)).claims.administrator===true;
 }

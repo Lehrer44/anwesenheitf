@@ -27,6 +27,31 @@ before(async()=>{
 });
 after(async()=>{await env?.cleanup();});
 
+test('explicit manual approval permits only named nonanonymous administrators without email verification',async()=>{
+ const context=(uid:string,claims:Record<string,unknown>,provider:'password'|'anonymous'='password')=>env.authenticatedContext(uid,{email_verified:false,...claims,firebase:{sign_in_provider:provider}}).firestore() as unknown as Firestore;
+ const approved=context('manually-approved',{administrator:true,manualAccessApproved:true});
+ await assertSucceeds(getDocs(collection(approved,'courses')));
+ await assertSucceeds(ownerRead(approved,courseId));
+ const id='manual-approval-course',state=initial(2),batch=writeBatch(approved);
+ mutate(state,{action:'addStudents',names:'Manual approval test pupil',group:state.groups[0].id});
+ mutate(state,{action:'session',date:day});
+ for(const [path,value] of await documentsFor(state,id,'manually-approved',0))batch.set(doc(approved,path),value);
+ await assertSucceeds(batch.commit());
+ await ownerAction(approved,'manually-approved',{action:'groupCount',count:3},id);
+ await ownerAction(approved,'manually-approved',{action:'title',title:'Manually approved course'},id);
+ assert.equal((await ownerRead(approved,id)).state.title,'Manually approved course');
+ const hash=await tokenHash(state.groups[0].token!);
+ await ownerAction(approved,'manually-approved',{action:'rotate',id:state.groups[0].id},id);
+ await assertFails(getDoc(doc(groupDb,'channels',hash)));
+ for(const denied of [context('not-approved',{}),context('role-only',{administrator:true}),context('approval-only',{manualAccessApproved:true}),context('revoked',{administrator:false,manualAccessApproved:true}),context('fake-anonymous-admin',{administrator:true,manualAccessApproved:true},'anonymous')]){
+  await assertFails(getDocs(collection(denied,'courses')));
+  await assertFails(ownerRead(denied,id));
+  await assertFails(setDoc(doc(denied,'courses','unapproved-new'),{ownerUid:'unapproved-new',title:'x',version:0,dates:[]}));
+  await assertFails(setDoc(doc(denied,'administrators','not-approved'),{administrator:true,manualAccessApproved:true}));
+ }
+ await assertFails(setDoc(doc(approved,'administrators','manually-approved'),{manualAccessApproved:true}));
+});
+
 test('three approved administrators share courses without changing ownership; roles cannot be self-granted',async()=>{
  const verified={email_verified:true,firebase:{sign_in_provider:'password' as const}};
  const admins=['admin-one','admin-two','admin-three'].map(uid=>env.authenticatedContext(uid,{...verified,administrator:true}).firestore() as unknown as Firestore);
