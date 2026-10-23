@@ -27,6 +27,49 @@ before(async()=>{
 });
 after(async()=>{await env?.cleanup();});
 
+test('three approved administrators share courses without changing ownership; roles cannot be self-granted',async()=>{
+ const verified={email_verified:true,firebase:{sign_in_provider:'password' as const}};
+ const admins=['admin-one','admin-two','admin-three'].map(uid=>env.authenticatedContext(uid,{...verified,administrator:true}).firestore() as unknown as Firestore);
+ const [a,b,c]=admins;
+ for(const db of admins){
+  assert.ok((await assertSucceeds(getDocs(collection(db,'courses')))).size>=2);
+  await assertSucceeds(ownerRead(db,courseId));
+ }
+ await assertFails(getDoc(doc(a,'administrators','admin-one')));
+ await assertFails(getDoc(doc(a,'administrators','admin-two')));
+ await assertFails(getDocs(collection(a,'administrators')));
+ for(const db of [ownerDb,groupDb,a]){
+  await assertFails(setDoc(doc(db,'administrators','group-device'),{active:true}));
+  await assertFails(updateDoc(doc(db,'administrators','admin-one'),{active:false}));
+  await assertFails(deleteDoc(doc(db,'administrators','admin-two')));
+ }
+ const unverified=env.authenticatedContext('unverified-admin',{email_verified:false,administrator:true,firebase:{sign_in_provider:'password'}}).firestore() as unknown as Firestore;
+ await assertFails(getDocs(collection(unverified,'courses')));
+ const id='shared-admin-course',batch=writeBatch(a);
+ const state=initial(7);mutate(state,{action:'addStudents',names:'Shared pupil',group:state.groups[0].id});mutate(state,{action:'session',date:day});
+ for(const [path,value] of await documentsFor(state,id,'admin-one',0))batch.set(doc(a,path),value);
+ await assertSucceeds(batch.commit());
+ const hash=await tokenHash(state.groups[0].token!),pupil=state.students[0].id;
+ await Promise.all([
+  ownerAction(b,'admin-two',{action:'title',title:'Shared title'},id).catch(e=>{throw Error('ADMIN TITLE: '+e.message);}),
+  ownerAction(c,'admin-three',{action:'groupCount',count:8},id).catch(e=>{throw Error('ADMIN GROUP COUNT: '+e.message);}),
+  updateDoc(doc(groupDb,'channels',hash,'lessons',day),{marks:{[pupil]:'anwesend'},reportedAt:serverTimestamp()}),
+ ]);
+ const shared=await ownerRead(a,id);
+ assert.equal(shared.meta.ownerUid,'admin-one');assert.equal(shared.state.title,'Shared title');
+ assert.equal(shared.state.groups.length,8);assert.equal(shared.state.sessions[0].marks[pupil],'anwesend');
+ for(const [path,value] of shared.docs)if(path.startsWith('channels/'))assert.equal(value.ownerUid,'admin-one');
+ await assertFails(updateDoc(doc(b,'courses',id),{ownerUid:'admin-two',version:shared.meta.version+1}));
+ await assertFails(ownerRead(otherDb,id));
+ await ownerAction(b,'admin-two',{action:'rotate',id:state.groups[0].id},id);
+ await assertFails(getDoc(doc(groupDb,'channels',hash)));
+ const revoked=env.authenticatedContext('admin-two',verified).firestore() as unknown as Firestore;
+ await assertFails(getDocs(collection(revoked,'courses')));
+ await assertFails(ownerRead(revoked,id));
+ await assertFails(ownerAction(revoked,'admin-two',{action:'title',title:'Revoked'},id));
+ await assertSucceeds(ownerRead(c,id));
+});
+
 test('manual group counts support empty courses and safe resizing',async()=>{
  const id='manual-groups',batch=writeBatch(otherDb);
  for(const [path,value] of await documentsFor(initial(),id,'other-owner',0))batch.set(doc(otherDb,path),value);
@@ -133,3 +176,5 @@ test('rotated links immediately lose reads, listeners and writes; replacement wo
  // The orphaned-subcollection case remains denied even with a guessed lesson date.
  await assertFails(getDoc(ref));
 });
+
+

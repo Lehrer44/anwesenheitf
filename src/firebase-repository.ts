@@ -14,7 +14,7 @@ export async function ownerRead(db:Firestore,course:string){
  }));
  return {docs,state:mergeLessons(state,lessons),meta:courseData};
 }
-export async function ownerAction(db:Firestore,uid:string,body:any,course:string){
+export async function ownerAction(db:Firestore,_uid:string,body:any,course:string){
  for(let attempt=0;attempt<4;attempt++){
   const loaded=await ownerRead(db,course);
   try{
@@ -30,13 +30,22 @@ export async function ownerAction(db:Firestore,uid:string,body:any,course:string
     let state:State={...config,title:metadata.data()!.title,sessions:[...before].filter(([p])=>p.startsWith('courses/'+course+'/sessions/')).map(([,v])=>v).sort((a,b)=>a.date.localeCompare(b.date))};
     state=mergeLessons(state,[...before].filter(([p])=>p.startsWith('channels/')&&p.includes('/lessons/')).map(([,v])=>v));
     normalizeLeaders(state);syncFutureSessions(state);mutate(state,body);syncFutureSessions(state);
-    const after=await documentsFor(state,course,uid,loaded.meta.version+1),changes=changesBetween(before,after);
+    const after=await documentsFor(state,course,loaded.meta.ownerUid,loaded.meta.version+1),changes=changesBetween(before,after);
     const newPaths=changes.sets.map(([p])=>p).filter(p=>!before.has(p));
     await Promise.all(newPaths.map(p=>tx.get(doc(db,p))));
     for(const path of changes.deletes)tx.delete(doc(db,path));
     for(const [path,value] of changes.sets)tx.set(doc(db,path),value);
    });return;
-  }catch(e){if((e as Error).message!=='COURSE_CHANGED')throw e;}
+  }catch(e){
+   if((e as Error).message==='COURSE_CHANGED')continue;
+   // Rules can reject an outdated version before Firestore reports contention.
+   // Retry only if another writer actually advanced this accessible course.
+   if((e as {code?:string}).code==='permission-denied'){
+    const current=await getDoc(doc(db,'courses',course));
+    if(current.exists()&&current.data().version!==loaded.meta.version)continue;
+   }
+   throw e;
+  }
  }
  throw Error('Gleichzeitige Änderung. Bitte erneut versuchen.');
 }

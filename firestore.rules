@@ -2,8 +2,10 @@ rules_version = '2';
 service cloud.firestore {
  match /databases/{database}/documents {
   // Prototype data model:
+  // Verified Firebase Auth token: administrator:true, set only by trusted operator.
+  // Approved administrators manage all courses; other owners only their own.
   // courses/{id}: ownerUid:string (immutable), title:string<=100,
-  //   version:int>=0, dates:list<=1000. Owner's query filters ownerUid.
+  //   version:int>=0, dates:list<=1000. Regular owners filter ownerUid; administrators may list all.
   // courses/{id}/private/config: students:list<=5000, groups:list<=30, demo:bool.
   // courses/{id}/sessions/{date}: date, cancelled<=200, roster<=5000,
   //   marks:map of student ID -> status, reports:map<=30. Owner only.
@@ -18,14 +20,18 @@ service cloud.firestore {
    return signed() && request.auth.token.email_verified == true
     && request.auth.token.firebase.sign_in_provider != 'anonymous';
   }
+  function administrator() {
+   return verified() && request.auth.token.administrator == true;
+  }
+  function manages(uid) { return verified() && (request.auth.uid==uid || administrator()); }
   function text(v,max) { return v is string && v.size() <= max; }
   function id(v) { return v is string && v.matches('^[A-Za-z0-9-]{1,128}$'); }
   function date(v) { return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
   function owner(courseId) {
-   return verified() && get(/databases/$(database)/documents/courses/$(courseId)).data.ownerUid == request.auth.uid;
+   return manages(get(/databases/$(database)/documents/courses/$(courseId)).data.ownerUid);
   }
   function ownerAfter(courseId) {
-   return verified() && getAfter(/databases/$(database)/documents/courses/$(courseId)).data.ownerUid == request.auth.uid;
+   return manages(getAfter(/databases/$(database)/documents/courses/$(courseId)).data.ownerUid);
   }
   function validCourse(d) {
    return d.keys().hasAll(['ownerUid','title','version','dates']) && d.keys().hasOnly(['ownerUid','title','version','dates'])
@@ -78,7 +84,7 @@ service cloud.firestore {
    return d.courseId==parent.data.courseId && d.groupId==parent.data.groupId && d.ownerUid==parent.data.ownerUid;
   }
   match /courses/{courseId} {
-   allow read: if verified() && resource.data.ownerUid==request.auth.uid;
+   allow read: if manages(resource.data.ownerUid);
    allow create: if verified() && id(courseId) && validCourse(request.resource.data)
     && request.resource.data.ownerUid==request.auth.uid && request.resource.data.version==0;
    allow update: if owner(courseId) && validCourse(request.resource.data)
@@ -96,30 +102,28 @@ service cloud.firestore {
   }
   match /channels/{hash} {
    // A known high-entropy ID grants get access; anonymous collection scans cannot discover IDs.
-   allow get: if (verified() && resource==null) || activeChannel(hash)
-    || (verified() && resource.data.ownerUid==request.auth.uid);
-   allow list: if verified() && resource.data.ownerUid==request.auth.uid;
+   allow get: if (verified() && resource==null) || manages(resource.data.ownerUid) || activeChannel(hash);
+   allow list: if manages(resource.data.ownerUid);
    allow create: if verified() && validChannel(request.resource.data,hash)
-    && request.resource.data.ownerUid==request.auth.uid && ownerAfter(request.resource.data.courseId);
-   allow update: if verified() && resource.data.ownerUid==request.auth.uid
+    && request.resource.data.ownerUid==getAfter(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerUid && ownerAfter(request.resource.data.courseId);
+   allow update: if manages(resource.data.ownerUid)
     && ownerAfter(resource.data.courseId) && validChannel(request.resource.data,hash)
     && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId','groupId']);
-   allow delete: if verified() && resource.data.ownerUid==request.auth.uid && owner(resource.data.courseId);
+   allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
    match /lessons/{day} {
-    allow read: if activeChannel(hash)
-     || (verified() && (resource==null || resource.data.ownerUid==request.auth.uid));
+    allow read: if (verified() && (resource==null || manages(resource.data.ownerUid))) || activeChannel(hash);
     allow create: if verified() && validLesson(request.resource.data,day)
-     && request.resource.data.ownerUid==request.auth.uid && ownerAfter(request.resource.data.courseId)
+     && request.resource.data.ownerUid==getAfter(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerUid && ownerAfter(request.resource.data.courseId)
      && boundToChannel(request.resource.data,hash);
     allow update: if validLesson(request.resource.data,day) && (
-     (verified() && resource.data.ownerUid==request.auth.uid && ownerAfter(resource.data.courseId)
+     (manages(resource.data.ownerUid) && ownerAfter(resource.data.courseId)
       && boundToChannel(request.resource.data,hash)
       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId','groupId','date']))
      || (activeChannel(hash) && resource.data.cancelled=='' && resource.data.rosterIds.size()>0
       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks','reportedAt'])
       && request.resource.data.marks.keys().hasAll(resource.data.rosterIds)
       && request.resource.data.reportedAt==request.time));
-    allow delete: if verified() && resource.data.ownerUid==request.auth.uid && owner(resource.data.courseId);
+    allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
    }
   }
   match /{document=**} { allow read,write: if false; }

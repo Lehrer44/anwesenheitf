@@ -2,7 +2,7 @@
 
 Einfache Anwesenheitsverwaltung: Gruppenleitung öffnet einen geheimen Gruppenlink, prüft alle Namen und sendet die Anwesenheit. Die Kursleitung sieht die Meldungen unmittelbar und kann eine Excel-Datei auf den eigenen Rechner herunterladen.
 
-React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Beim Anlegen wählt die Kursleitung die Gruppenanzahl selbst (0 bis 30); es gibt keine voreingestellte Anzahl. Die Anzahl lässt sich später pro Kurs ändern. Beim Reduzieren werden nur vollständig unbenutzte Gruppen am Listenende entfernt. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Eine gemeinsame Bearbeitung desselben Kurses durch mehrere Kursleitungen ist derzeit nicht vorgesehen.
+React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Beim Anlegen wählt die Kursleitung die Gruppenanzahl selbst (0 bis 30); es gibt keine voreingestellte Anzahl. Die Anzahl lässt sich später pro Kurs ändern. Beim Reduzieren werden nur vollständig unbenutzte Gruppen am Listenende entfernt. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Gezielt freigeschaltete Administratoren können sämtliche Kurse gemeinsam verwalten. Eine normale Registrierung vergibt keine Administratorrechte.
 
 ## Stand und Freischaltung
 
@@ -42,11 +42,20 @@ Die Ansichten verwenden Echtzeit-Abonnements statt 20-Sekunden-Polling. Beim Öf
 
 Aktuelle Bedingungen: https://firebase.google.com/pricing und https://firebase.google.com/docs/projects/billing/firebase-pricing-plans
 
+## Gemeinsame Administratoren
+
+Jede Person registriert auf der App-Seite ihr eigenes Konto und bestätigt ihre E-Mail-Adresse. Die drei vorgesehenen Administratoren erhalten einmalig über einen vertrauenswürdigen Projektzugang das Firebase-Auth-Custom-Claim `administrator: true`. Dafür dient das Admin SDK oder die Firebase CLI-Funktion zur Claims-Verwaltung; niemals der Browsercode. Vorhandene andere Claims müssen erhalten bleiben. Keine E-Mail-Adressen oder Rollenlisten im Frontend hinterlegen. Nach der Freischaltung neu anmelden oder die App neu laden; die Kursauswahl fordert ein frisches ID-Token an.
+
+Diese Rolle erlaubt Lesen, Anlegen und Bearbeiten aller Kurse einschließlich Gruppen, Terminen und Exporten. Reguläre Kursleitungen behalten ausschließlich ihre eigenen Kurse. Gruppenlinks bleiben auf ihre Gruppe begrenzt. Auch Administratoren können im Browser keine Rollen verteilen, ändern oder auflisten. Zum Widerruf das Claim über denselben vertrauenswürdigen Zugang auf `false` setzen. Bereits ausgestellte ID-Tokens bleiben bis zu ihrem Ablauf (bis zu einer Stunde) gültig; eine erneute Anmeldung/Token-Erneuerung übernimmt den Widerruf. Bereits gelesene Daten können nicht rückwirkend zurückgerufen werden.
+
+Die ursprüngliche `ownerUid` eines Kurses bleibt bei gemeinsamer Bearbeitung unverändert. Bestehende Daten benötigen dafür keine Umschreibung. Gleichzeitige Änderungen mehrerer Administratoren und Gruppen verwenden dieselben Transaktionen wie bisher. Die Administratorrolle benötigt weder Cloud Functions noch einen kostenpflichtigen Tarif.
+
 ## Berechtigungen und Datenmodell
 
+- Firebase Auth: ausschließlich serverseitig vergebene gemeinsame Rolle `administrator: true`, zusätzlich bestätigte E-Mail erforderlich.
 - `courses/{id}`: unveränderliche Kursleitung, Titel, Version, Terminliste.
-- `courses/{id}/private/config`: Schüler, Gruppen, geheime Tokens; nur die Kursleitung.
-- `courses/{id}/sessions/{date}`: vollständige historische Teilnehmerliste pro Termin; nur die Kursleitung.
+- `courses/{id}/private/config`: Schüler, Gruppen, geheime Tokens; nur die Kursleitung und freigeschaltete Administratoren.
+- `courses/{id}/sessions/{date}`: vollständige historische Teilnehmerliste pro Termin; nur die Kursleitung und freigeschaltete Administratoren.
 - `channels/{SHA256(token)}`: begrenzte Gruppenansicht ohne andere Gruppen oder geheime Tokens.
 - `channels/{hash}/lessons/{date}`: Teilnehmer und Meldung genau dieser Gruppe an diesem Termin.
 

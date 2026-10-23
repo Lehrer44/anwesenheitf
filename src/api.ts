@@ -24,9 +24,12 @@ export async function resetPassword(email:string){if(!email.trim())throw Error('
 export async function logout(){if(auth)await signOut(auth);}
 async function groupUser(){const {auth}=services();await ready();if(!auth.currentUser)await signInAnonymously(auth);}
 function owner(){const user=session();if(!user?.emailVerified)throw Error('Bitte als Kursleitung mit bestätigter E-Mail-Adresse anmelden.');return user.uid;}
+export async function isAdministrator(){
+ owner();return (await services().auth.currentUser!.getIdTokenResult(true)).claims.administrator===true;
+}
 export async function listCourses():Promise<CourseChoice[]>{
  const {db}=services(),uid=owner();
- const result=await getDocs(query(collection(db,'courses'),where('ownerUid','==',uid)));
+ const result=await getDocs(await isAdministrator()?collection(db,'courses'):query(collection(db,'courses'),where('ownerUid','==',uid)));
  return result.docs.map(d=>({id:d.id,title:d.data().title as string})).sort((a,b)=>a.title.localeCompare(b.title,'de'));
 }
 export async function createCourse(title:string,groupCount:number){
