@@ -13,7 +13,7 @@ const {handle}=await import('../supabase/functions/course/index.ts');
 const {initial,mutate}=await import('../src/model.ts');
 function request(body?:any,token?:string,jwt='owner-jwt'){return new Request('https://project.test/functions/v1/course?course=course',{method:body?'POST':'GET',headers:{...(jwt?{Authorization:'Bearer '+jwt}:{}),...(token?{'x-group-token':token}:{}),'Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});}
 assert.equal((await handle(request(undefined,undefined,''))).status,401);assert.equal((await handle(request(undefined,undefined,'forged'))).status,401);
-const s=initial();mutate(s,{action:'addStudents',names:'Anna\nBen'});mutate(s,{action:'distribute'});mutate(s,{action:'session',date:'2026-10-12'});row={id:'course',owner_id:'owner',version:0,state:s};
+const s=initial(7);mutate(s,{action:'addStudents',names:'Anna\nBen'});mutate(s,{action:'distribute'});mutate(s,{action:'session',date:'2026-10-12'});row={id:'course',owner_id:'owner',version:0,state:s};
 assert.equal((await handle(request(undefined,'invalid',''))).status,403);
 assert.equal((await handle(request({action:'title',title:'Forbidden'},s.groups[0].token,''))).status,400);
 const g=s.groups[0],g2=s.groups[1];
@@ -22,7 +22,7 @@ assert.equal((await handle(request({action:'submit',date:'2026-10-12',marks:{}},
 const a=await Promise.all([handle(request({action:'submit',date:'2026-10-12',marks:{[s.students[0].id]:'anwesend'}},g.token,'')),handle(request({action:'submit',date:'2026-10-12',marks:{[s.students[1].id]:'entschuldigt'}},g2.token,''))]);assert.ok(a.every(r=>r.status===200));assert.equal(Object.keys(row.state.sessions[0].marks).length,2);
 await handle(request({action:'rotate',id:g.id}));assert.equal((await handle(request(undefined,g.token,''))).status,403);
 const secret='one-time-migration-claim';const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(secret)))].map(x=>x.toString(16).padStart(2,'0')).join('');
-row={id:'course',owner_id:null,claim_hash:hash,state:initial(),version:0};
+row={id:'course',owner_id:null,claim_hash:hash,state:initial(7),version:0};
 assert.equal((await handle(request({action:'claimMigration',course:'course',claim:'wrong'}))).status,403);
 assert.equal((await handle(request({action:'claimMigration',course:'course',claim:secret}))).status,200);assert.equal(row.owner_id,'owner');assert.equal(row.claim_hash,null);
 assert.equal((await handle(request({action:'claimMigration',course:'course',claim:secret}))).status,403);
@@ -30,10 +30,11 @@ console.log('Edge checks passed: verified authentication, restricted groups, com
 
 // Enrollment changes must reach existing future sessions through the real handler.
 const future=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
-const enrolled=initial();mutate(enrolled,{action:'addStudents',names:'First',group:enrolled.groups[0].id});mutate(enrolled,{action:'session',date:future});row={id:'course',owner_id:'owner',version:0,state:enrolled};
+const enrolled=initial(7);mutate(enrolled,{action:'addStudents',names:'First',group:enrolled.groups[0].id});mutate(enrolled,{action:'session',date:future});row={id:'course',owner_id:'owner',version:0,state:enrolled};
 assert.equal((await handle(request({action:'addStudents',names:'Late student',group:enrolled.groups[0].id}))).status,200);
 const lateView=await(await handle(request(undefined,enrolled.groups[0].token,''))).json();assert.equal(lateView.state.sessions[0].roster.length,2);
 assert.equal((await handle(request({action:'reorder',id:row.state.students[1].id,direction:-1},enrolled.groups[0].token,''))).status,400);
 assert.equal((await handle(request({action:'reorder',id:row.state.students[1].id,direction:-1}))).status,200);
 const sorted=await(await handle(request(undefined,enrolled.groups[0].token,''))).json();assert.equal(sorted.state.sessions[0].roster[0].name,'Late student');
 console.log('Edge enrollment checks passed: late students reach future group lessons, central ordering is enforced.');
+

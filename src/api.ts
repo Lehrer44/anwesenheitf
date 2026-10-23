@@ -29,8 +29,8 @@ export async function listCourses():Promise<CourseChoice[]>{
  const result=await getDocs(query(collection(db,'courses'),where('ownerUid','==',uid)));
  return result.docs.map(d=>({id:d.id,title:d.data().title as string})).sort((a,b)=>a.title.localeCompare(b.title,'de'));
 }
-export async function createCourse(title='Mein Wochenkurs'){
- const {db}=services(),uid=owner(),id=crypto.randomUUID(),state=initial();state.title=title.trim().slice(0,100)||'Mein Wochenkurs';
+export async function createCourse(title:string,groupCount:number){
+ const {db}=services(),uid=owner(),id=crypto.randomUUID(),state=initial(groupCount);state.title=title.trim().slice(0,100)||'Mein Wochenkurs';
  const docs=await documentsFor(state,id,uid,0),batch=writeBatch(db);
  for(const [path,data] of docs)batch.set(doc(db,path),data);
  await batch.commit();return id;

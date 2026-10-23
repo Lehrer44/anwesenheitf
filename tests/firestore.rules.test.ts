@@ -19,13 +19,29 @@ before(async()=>{
  otherDb=env.authenticatedContext('other-owner',verified).firestore() as unknown as Firestore;
  groupDb=env.authenticatedContext('group-device',{firebase:{sign_in_provider:'anonymous'}}).firestore() as unknown as Firestore;
  publicDb=env.unauthenticatedContext().firestore() as unknown as Firestore;
- const s=initial();mutate(s,{action:'addStudents',names:'First',group:s.groups[0].id});mutate(s,{action:'addStudents',names:'Second',group:s.groups[1].id});
+ const s=initial(7);mutate(s,{action:'addStudents',names:'First',group:s.groups[0].id});mutate(s,{action:'addStudents',names:'Second',group:s.groups[1].id});
  for(const date of [day,future])mutate(s,{action:'session',date});
  firstHash=await tokenHash(s.groups[0].token!);secondHash=await tokenHash(s.groups[1].token!);student=s.students[0].id;secondStudent=s.students[1].id;
  const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(s,courseId,'owner',0))batch.set(doc(ownerDb,path),value);await assertSucceeds(batch.commit());
- const other=writeBatch(otherDb);for(const [path,value] of await documentsFor(initial(),'course-two','other-owner',0))other.set(doc(otherDb,path),value);await assertSucceeds(other.commit());
+ const other=writeBatch(otherDb);for(const [path,value] of await documentsFor(initial(7),'course-two','other-owner',0))other.set(doc(otherDb,path),value);await assertSucceeds(other.commit());
 });
 after(async()=>{await env?.cleanup();});
+
+test('manual group counts support empty courses and safe resizing',async()=>{
+ const id='manual-groups',batch=writeBatch(otherDb);
+ for(const [path,value] of await documentsFor(initial(),id,'other-owner',0))batch.set(doc(otherDb,path),value);
+ await assertSucceeds(batch.commit());
+ assert.equal((await ownerRead(otherDb,id)).state.groups.length,0);
+ await ownerAction(otherDb,'other-owner',{action:'groupCount',count:3},id);
+ const created=await ownerRead(otherDb,id);assert.equal(created.state.groups.length,3);
+ const first=created.state.groups[0].id,removedHash=await tokenHash(created.state.groups[2].token!);
+ await ownerAction(otherDb,'other-owner',{action:'groupCount',count:1},id);
+ assert.equal((await ownerRead(otherDb,id)).state.groups[0].id,first);
+ await assertFails(getDoc(doc(groupDb,'channels',removedHash)));
+ await ownerAction(otherDb,'other-owner',{action:'groupCount',count:0},id);
+ assert.equal((await ownerRead(otherDb,id)).state.groups.length,0);
+ await assert.rejects(ownerAction(ownerDb,'owner',{action:'groupCount',count:0},courseId),/Gruppen.*Schüler/);
+});
 
 test('owner query works; unauthenticated and foreign course access is denied',async()=>{
  const q=query(collection(ownerDb,'courses'),where('ownerUid','==','owner'));assert.equal((await assertSucceeds(getDocs(q))).size,1);

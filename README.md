@@ -2,7 +2,7 @@
 
 Einfache Anwesenheitsverwaltung: Gruppenleitung öffnet einen geheimen Gruppenlink, prüft alle Namen und sendet die Anwesenheit. Die Kursleitung sieht die Meldungen unmittelbar und kann eine Excel-Datei auf den eigenen Rechner herunterladen.
 
-React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Neue Kurse starten mit sieben Gruppen. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Eine gemeinsame Bearbeitung desselben Kurses durch mehrere Kursleitungen ist derzeit nicht vorgesehen.
+React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Beim Anlegen wählt die Kursleitung die Gruppenanzahl selbst (0 bis 30); es gibt keine voreingestellte Anzahl. Die Anzahl lässt sich später pro Kurs ändern. Beim Reduzieren werden nur vollständig unbenutzte Gruppen am Listenende entfernt. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Eine gemeinsame Bearbeitung desselben Kurses durch mehrere Kursleitungen ist derzeit nicht vorgesehen.
 
 ## Stand und Freischaltung
 
@@ -22,7 +22,7 @@ Dieser Branch bereitet die Migration vor. Ein Merge und die Einrichtung des Fire
    - `VITE_FIREBASE_AUTH_DOMAIN`
    - `VITE_FIREBASE_PROJECT_ID`
    - `VITE_FIREBASE_APP_ID`
-7. Kursleitungs-Konto erstellen und E-Mail bestätigen. Die Seite muss bis zum Abschluss der Datenübernahme in einer getrennten Testumgebung geprüft werden. Der erste Login legt einen leeren Kurs an; importierte Kurse erscheinen zusätzlich in der Kursauswahl.
+7. Kursleitungs-Konto erstellen und E-Mail bestätigen. Die Seite muss bis zum Abschluss der Datenübernahme in einer getrennten Testumgebung geprüft werden. Beim ersten Login wird noch kein Kurs automatisch angelegt. Name und Gruppenanzahl werden im Anlegedialog gewählt; importierte Kurse erscheinen in der Kursauswahl.
 8. Daten übernehmen, alle Gruppen und historischen Termine vergleichen, anschließend neue Gruppenlinks verteilen. Erst danach den Branch mergen und GitHub Pages umschalten.
 
 Die Firebase-Webkonfiguration darf im Browser sichtbar sein. **Service-Account-Schlüssel, Admin-SDK-Zugangsdaten und Supabase-Service-Role-Keys gehören niemals in VITE-Variablen, Repository-Dateien oder Actions-Logs.** Es gibt keinen automatischen Rückgriff auf das bisherige Supabase-Projekt.
@@ -31,7 +31,7 @@ Die Firebase-Webkonfiguration darf im Browser sichtbar sein. **Service-Account-S
 
 Die Anwendung verwendet keine Cloud Functions, kein Cloud Storage, keinen Dateiupload, keinen kostenpflichtigen Auth-Anbieter und kein Firebase App Hosting. Excel wird im Browser erzeugt und nur lokal heruntergeladen.
 
-Spark hat feste Nutzungskontingente. Für Firestore Standard sind dies derzeit 1 GiB Daten, 50.000 Lesevorgänge und 20.000 Schreibvorgänge pro Tag. Die Kontingente gelten für alle Kurse des Projekts zusammen. Sieben Gruppen und wenige Kursleitungen sind ein kleiner Anwendungsfall; die tatsächliche Nutzung muss nach der Einrichtung geprüft werden. Firebase garantiert mit Spark keine unbegrenzte Verfügbarkeit. Eine mit Supabase vergleichbare Sieben-Tage-Inaktivitätspause ist für Firestore nicht dokumentiert.
+Spark hat feste Nutzungskontingente. Für Firestore Standard sind dies derzeit 1 GiB Daten, 50.000 Lesevorgänge und 20.000 Schreibvorgänge pro Tag. Die Kontingente gelten für alle Kurse des Projekts zusammen. Wenige Gruppen und Kursleitungen sind ein kleiner Anwendungsfall; die tatsächliche Nutzung muss nach der Einrichtung geprüft werden. Firebase garantiert mit Spark keine unbegrenzte Verfügbarkeit. Eine mit Supabase vergleichbare Sieben-Tage-Inaktivitätspause ist für Firestore nicht dokumentiert.
 
 Die Ansichten verwenden Echtzeit-Abonnements statt 20-Sekunden-Polling. Beim Öffnen wird die Kurshistorie geladen; Bearbeitungen der Kursleitung lesen den betroffenen Kurs im Rahmen einer Transaktion erneut. Sehr große Historien benötigen später eine Archivierung/gezieltere Abfragen. Einzelne Aktionen sind auf 400 geänderte Dokumente und Dokumente vorsorglich auf etwa 850 kB begrenzt; vor Überschreitung wird ohne Teiländerungen abgebrochen.
 

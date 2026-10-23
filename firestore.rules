@@ -36,7 +36,7 @@ service cloud.firestore {
   function validConfig(d) {
    return d.keys().hasAll(['students','groups','demo']) && d.keys().hasOnly(['students','groups','demo'])
     && d.students is list && d.students.size()<=5000
-    && d.groups is list && d.groups.size()>0 && d.groups.size()<=30 && d.demo is bool;
+    && d.groups is list && d.groups.size()<=30 && d.demo is bool;
   }
   function marks(d) {
    return d is map && d.size()<=5000 && d.values().hasOnly(['anwesend','abwesend','entschuldigt']);
