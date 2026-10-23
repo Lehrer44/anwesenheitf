@@ -1,1 +1,15 @@
-{"extends":"./tsconfig.json","include":["tests/firebase-data.test.ts","tests/firestore.rules.test.ts","scripts/migrate-course.ts","src/model.ts","src/firebase-data.ts","src/firebase-repository.ts"],"compilerOptions":{"types":["node"]}}
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "tests/firebase-data.test.ts",
+    "tests/firestore.rules.test.ts",
+    "src/model.ts",
+    "src/firebase-data.ts",
+    "src/firebase-repository.ts"
+  ],
+  "compilerOptions": {
+    "types": [
+      "node"
+    ]
+  }
+}

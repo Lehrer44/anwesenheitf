@@ -6,11 +6,11 @@ React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und 
 
 ## Stand und Freischaltung
 
-Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Der bestehende Kurs wurde am 24. Oktober 2026 aus Supabase übernommen: 134 Schüler, 7 Gruppen und 14 Termine. Alle 121 Zieldokumente wurden vollständig nachgelesen und verglichen. Die Quelle blieb unverändert. Die alten Gruppenlinks bleiben beim bisherigen Backend; Firebase verwendet neue Links. Der Branch ist noch nicht in die aktive Pages-Version gemergt.
+Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Der bestehende Kurs wurde am 24. Oktober 2026 aus Supabase übernommen: 134 Schüler, 7 Gruppen und 14 Termine. Alle 121 Zieldokumente wurden vollständig nachgelesen und verglichen. Die Quelle blieb unverändert. Die alten Gruppenlinks bleiben beim bisherigen Backend; Firebase verwendet neue Links. Die Firebase-Version ist in `main` integriert und auf https://lehrer44.github.io/anwesenheitsapp/ veröffentlicht.
 
-Am echten Firebase-Projekt wurden die anonyme Anmeldung und die Sperren für Kurslisten, fremde Kurse und ungültige Gruppenlinks geprüft. Das temporäre anonyme Prüfkonto wurde entfernt. Die veröffentlichten Regeln wurden mit dem lokalen getesteten Stand verglichen. Die bisherige Supabase-Installation bleibt bis zur Umschaltung aktiv.
+Am echten Firebase-Projekt wurden die anonyme Anmeldung und die Sperren für Kurslisten, fremde Kurse und ungültige Gruppenlinks geprüft. Das temporäre anonyme Prüfkonto wurde entfernt. Die veröffentlichten Regeln wurden mit dem lokalen getesteten Stand verglichen. Die Anwendung verwendet ausschließlich Firebase. Der alte Backend-Code, die Edge-Tests und das abgeschlossene Importwerkzeug wurden aus dem aktuellen Repository-Stand entfernt.
 
-Für dieses Projekt sind die folgenden Einrichtungsschritte 1–6 bereits erledigt. Für ein anderes Zielprojekt:
+Für dieses Projekt ist die Einrichtung abgeschlossen. Für ein anderes Zielprojekt:
 
 1. Ein Firebase-Projekt im kostenlosen **Spark**-Tarif erstellen. Kein Abrechnungskonto verknüpfen; weder Blaze noch ein befristetes Guthaben wird benötigt.
 2. Eine Web-App registrieren. Die vier öffentlichen Konfigurationswerte in `src/firebase-config.json` übernehmen; keine Admin-Zugangsdaten verwenden.
@@ -27,8 +27,8 @@ Für dieses Projekt sind die folgenden Einrichtungsschritte 1–6 bereits erledi
    - `VITE_FIREBASE_PROJECT_ID`
    - `VITE_FIREBASE_APP_ID`
    Teilweise gesetzte Variablen werden abgelehnt, damit keine Konfiguration verschiedener Projekte vermischt wird.
-7. Kursleitungs-Konto erstellen und E-Mail bestätigen. Die Seite muss bis zum Abschluss der Datenübernahme in einer getrennten Testumgebung geprüft werden. Beim ersten Login wird noch kein Kurs automatisch angelegt. Name und Gruppenanzahl werden im Anlegedialog gewählt; importierte Kurse erscheinen in der Kursauswahl.
-8. Daten übernehmen, alle Gruppen und historischen Termine vergleichen, anschließend neue Gruppenlinks verteilen. Erst danach den Branch mergen und GitHub Pages umschalten.
+7. Kursleitungs-Konto erstellen und E-Mail bestätigen oder das konkrete Administratorkonto ausdrücklich manuell freigeben (siehe unten). Beim ersten Login wird kein Kurs automatisch angelegt. Name und Gruppenanzahl werden im Anlegedialog gewählt.
+8. Anwendung und Gruppenmeldungen prüfen, auf GitHub Pages veröffentlichen und die zu diesem Projekt gehörenden Gruppenlinks verteilen.
 
 Die Firebase-Webkonfiguration darf im Browser sichtbar sein. **Service-Account-Schlüssel, Admin-SDK-Zugangsdaten und Supabase-Service-Role-Keys gehören niemals in VITE-Variablen, Repository-Dateien oder Actions-Logs.** Es gibt keinen automatischen Rückgriff auf das bisherige Supabase-Projekt.
 
@@ -86,43 +86,12 @@ npm run build
 npx tsc --noEmit -p tsconfig.firebase.json
 ```
 
-Die Regeltests verwenden ausschließlich das lokale Demo-Projekt `demo-kursblick`. Sie prüfen Kursgrenzen, verbotene Listenabfragen, Rollenerhöhung, Pflichtfelder, Statuswerte, vollständige Meldungen, gleichzeitige Änderungen, zukünftige Teilnehmer, Löschungen, Ausfälle und den sofortigen Widerruf alter Links. Die alten Supabase-Edge-Tests bleiben als Regressionstests erhalten.
+Die Regeltests verwenden ausschließlich das lokale Demo-Projekt `demo-kursblick`. Sie prüfen Kursgrenzen, verbotene Listenabfragen, Rollenerhöhung, Pflichtfelder, Statuswerte, vollständige Meldungen, gleichzeitige Änderungen, zukünftige Teilnehmer, Löschungen, Ausfälle und den sofortigen Widerruf alter Links.
 
 GitHub Actions führt Modelltests, Regeltests und Build auch für Pull Requests aus. Pull Requests veröffentlichen keine Pages-Version. Ein produktiver Build wird bei fehlender oder unvollständiger Firebase-Webkonfiguration abgebrochen.
 
-## Einmalige Datenübernahme ohne manuelles Exportieren
+## Abgeschlossene Datenübernahme
 
-`scripts/migrate-course.ts` liest den vollständigen bisherigen Kurs über die bestehende Supabase-Funktion. Es verwendet dafür die normale Anmeldung der bisherigen Kursleitung, keinen Supabase-Service-Role-Key. Im Firebase-Ziel werden einmalig lokale Admin-Berechtigungen über Application Default Credentials benötigt. Diese Zugangsdaten bleiben außerhalb des Repositories.
+Der vorhandene Kurs wurde vollständig nach Firebase übernommen und dort geprüft. Die Anwendung benötigt weder eine Supabase-Verbindung noch Zugangsdaten des früheren Backends. Das einmalige Importwerkzeug und die alten Supabase-Dateien wurden nach der erfolgreichen Umschaltung entfernt. Frühere Quellstände bleiben über die Git-Versionsgeschichte nachvollziehbar.
 
-Umgebungsvariablen für den lokalen Prozess:
-
-```text
-MIGRATION_SOURCE_URL=https://DEIN_PROJEKT.supabase.co
-MIGRATION_SOURCE_PUBLIC_KEY=DEIN_PUBLISHABLE_KEY
-MIGRATION_SOURCE_EMAIL=KONTO_DES_BISHERIGEN_KURSES
-MIGRATION_SOURCE_PASSWORD=PASSWORT_DES_BISHERIGEN_KONTOS
-MIGRATION_TARGET_PROJECT=FIREBASE_PROJEKT_ID
-MIGRATION_TARGET_OWNER_EMAIL=BESTAETIGTES_ODER_MANUELL_FREIGEGEBENES_FIREBASE_KONTO
-```
-
-Zunächst ohne Schreibzugriff auf Kursdaten prüfen:
-
-```sh
-node --experimental-strip-types scripts/migrate-course.ts
-```
-
-Erst nach Freigabe übernehmen:
-
-```sh
-node --experimental-strip-types scripts/migrate-course.ts --commit
-```
-
-Das Werkzeug zeigt nur Anzahlen und die Zielprojekt-ID, keine Namen, Passwörter, Tokens oder Gruppenlinks. Es überschreibt keinen vorhandenen Zielkurs. Neue Links werden erzeugt; vollständige Daten werden zuerst verdeckt angelegt und erst am Ende freigeschaltet. Anschließend wird jedes Dokument nachgelesen und mit der Quelle verglichen. Supabase-Daten bleiben erhalten. Während des Umstiegs müssen Meldungen und Bearbeitungen kurz pausieren, damit nach der Übernahme keine neuen Änderungen im alten System zurückbleiben.
-
-Bei einem abgebrochenen Import werden unvollständige Zielinformationen erkannt und ein erneuter Import sicher abgelehnt. Diese müssen vor einem neuen Versuch gezielt bereinigt werden. Supabase bleibt bis zur erfolgreichen Prüfung die maßgebliche Quelle.
-
-## Bisheriges Backend
-
-`supabase/` und die zugehörigen Tests bleiben zur Dokumentation und für den Rückfall auf den bisherigen Stand erhalten. Der neue Browsercode greift nicht mehr auf Supabase zu. Ein vollständiger Rückwechsel erfolgt über den vorherigen Git-Stand und dessen bestehende Konfiguration.
-
-
+Die Firebase-Gruppenlinks unterscheiden sich von den früheren Links. Nur Links aus der aktuellen App verwenden. Das Entfernen der Repository-Dateien löscht kein externes Supabase-Projekt und keine dort gespeicherten Daten.
