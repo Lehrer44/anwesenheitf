@@ -113,3 +113,12 @@ GitHub Actions führt Modelltests, Regeltests und Build auch für Pull Requests 
 Der vorhandene Kurs wurde vollständig nach Firebase übernommen und dort geprüft. Die Anwendung benötigt weder eine Supabase-Verbindung noch Zugangsdaten des früheren Backends. Das einmalige Importwerkzeug und die alten Supabase-Dateien wurden nach der erfolgreichen Umschaltung entfernt. Frühere Quellstände bleiben über die Git-Versionsgeschichte nachvollziehbar.
 
 Die Firebase-Klassenlinks unterscheiden sich von den früheren Links. Nur Links aus der aktuellen App verwenden. Das Entfernen der Repository-Dateien löscht kein externes Supabase-Projekt und keine dort gespeicherten Daten.
+
+
+## Listen, Links und Rollen
+
+Die Navigation heißt **Übersicht**, **Tabelle** und **Links**. Listenname und neue Liste werden auf der Übersicht verwaltet. Der Datumwähler steht neben dem Meldungsstatus; Tabellenlegende und zusätzliche Fußtexte entfallen. Klassenkopfzeilen erstrecken sich über die komplette Tabellenbreite und halten ihre linksbündige Beschriftung am sichtbaren linken Rand. Nicht gemeldete Statuszellen enthalten keinen Text.
+
+Unter **Links → Bearbeiten** werden Name, Verantwortlicher und Helfer festgelegt. Beide Rollen verwenden vorhandene Schüler; pro Klasse sind unterschiedliche Personen vorgesehen. Die gewählten Personen bleiben dieser Klasse zugeordnet. Namen werden anhand ihrer Schüler-ID angezeigt, sodass Umbenennen, doppelte Namen und Entfernen eines Schülers korrekt verarbeitet werden. Die Helfer-ID liegt ausschließlich in der privaten Konfiguration. Das Datenformat der bestehenden Klassenlinks und die veröffentlichten Firestore-Regeln bleiben kompatibel.
+
+Die Klassenansicht enthält weder Seitenleiste noch globale Kopfzeile oder die Überschrift „Anwesenheit melden“. Auch während des Ladens wird bei einem Klassenlink keine Administration eingeblendet. Die serverseitige Begrenzung auf die eigene Klassenmeldung bleibt bestehen.

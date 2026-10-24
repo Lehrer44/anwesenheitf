@@ -18,3 +18,26 @@ console.log('Change checks passed: permanent removal, status reset, pinned leade
 mutate(s,{action:'assign',id:ben.id,group:g.id});mutate(s,{action:'session',date:'2026-10-27'});const staleMarks={[dora.id]:'anwesend',[ben.id]:'anwesend'};mutate(s,{action:'deleteStudent',id:ben.id});assert.throws(()=>mutate(s,{action:'submit',date:'2026-10-27',marks:staleMarks},g));mutate(s,{action:'submit',date:'2026-10-27',marks:{[dora.id]:'anwesend'}},g);assert.equal(s.sessions.find(d=>d.date==='2026-10-27')!.marks[ben.id],undefined);
 console.log('Concurrent deletion check passed: stale submissions rejected, remaining group can submit.');
 
+
+// Responsible person and helper are existing, distinct pupils, pinned to their class.
+const roles=initial(2);mutate(roles,{action:'addStudents',names:'أحمد\nمحمد\nعلي\nحسن',group:roles.groups[0].id});
+const [responsible,helper,other]=roles.students,roleClass=roles.groups[1];
+mutate(roles,{action:'session',date:'2000-01-01'});const roleHistory=structuredClone(roles.sessions);
+mutate(roles,{action:'group',id:roleClass.id,name:'Klasse Rollen',leaderId:responsible.id,helperId:helper.id});
+assert.equal(roles.students.length,4);assert.equal(roleClass.leaderId,responsible.id);assert.equal(roleClass.helperId,helper.id);assert.equal(helper.group,roleClass.id);
+assert.deepEqual(roles.sessions,roleHistory);
+mutate(roles,{action:'distribute'});assert.equal(responsible.group,roleClass.id);assert.equal(helper.group,roleClass.id);
+assert.throws(()=>mutate(roles,{action:'assign',id:helper.id,group:roles.groups[0].id}));assert.throws(()=>mutate(roles,{action:'archive',id:helper.id}));
+assert.throws(()=>mutate(roles,{action:'group',id:roleClass.id,name:'x',leaderId:responsible.id,helperId:responsible.id}));
+assert.throws(()=>mutate(roles,{action:'group',id:roleClass.id,name:'x',leaderId:responsible.id,helperId:'missing'}));
+assert.throws(()=>mutate(roles,{action:'group',id:roles.groups[0].id,name:'x',leaderId:helper.id}));
+assert.throws(()=>mutate(roles,{action:'group',id:roles.groups[0].id,name:'x',leaderId:other.id,helperId:helper.id}));
+assert.throws(()=>mutate(roles,{action:'group',id:roleClass.id,name:'x',leaderId:responsible.id,helperId:helper.id},roleClass));
+mutate(roles,{action:'group',id:roleClass.id,name:roleClass.name,leaderId:helper.id,helperId:responsible.id});
+assert.equal(roleClass.leaderId,helper.id);assert.equal(roleClass.helperId,responsible.id);
+mutate(roles,{action:'renameStudent',id:responsible.id,name:'أحمد جديد'});assert.equal(roles.students.find(p=>p.id===roleClass.helperId)!.name,'أحمد جديد');
+mutate(roles,{action:'deleteStudent',id:responsible.id});assert.equal(roleClass.helperId,undefined);assert.equal(roleClass.leaderId,helper.id);
+mutate(roles,{action:'group',id:roleClass.id,name:roleClass.name,leaderId:'',helperId:''});assert.equal(roleClass.leaderId,undefined);assert.equal(roleClass.helperId,undefined);
+mutate(roles,{action:'group',id:roleClass.id,name:roleClass.name,leaderId:'',helperId:other.id});assert.equal(roleClass.helperId,other.id);
+normalizeLeaders(roles);assert.equal(roleClass.helperId,other.id);
+console.log('Class role checks passed: existing pupils only, separate roles, duplicate-role rejection, pinning, swaps, rename/deletion cleanup and preserved history.');
