@@ -108,7 +108,7 @@ test('manual group counts support empty courses and safe resizing',async()=>{
  await assertFails(getDoc(doc(groupDb,'channels',removedHash)));
  await ownerAction(otherDb,'other-owner',{action:'groupCount',count:0},id);
  assert.equal((await ownerRead(otherDb,id)).state.groups.length,0);
- await assert.rejects(ownerAction(ownerDb,'owner',{action:'groupCount',count:0},courseId),/Gruppen.*Schüler/);
+ await assert.rejects(ownerAction(ownerDb,'owner',{action:'groupCount',count:0},courseId),/Klassen.*Schüler/);
 });
 
 test('owner query works; unauthenticated and foreign course access is denied',async()=>{
@@ -203,3 +203,37 @@ test('rotated links immediately lose reads, listeners and writes; replacement wo
 });
 
 
+
+
+test('deleting a class preserves pupils and historical reports and revokes the old class link',async()=>{
+ const id='delete-class-course',state=initial(2),removed=state.groups[0],kept=state.groups[1];
+ mutate(state,{action:'addStudents',names:'Leader\nPupil',group:removed.id});
+ mutate(state,{action:'group',id:removed.id,name:'Klasse A',leaderId:state.students[0].id});
+ mutate(state,{action:'addStudents',names:'Other pupil',group:kept.id});
+ for(const date of ['2000-01-01','2099-01-01'])mutate(state,{action:'session',date});
+ const hash=await tokenHash(removed.token!),keptHash=await tokenHash(kept.token!),pupil=state.students[1].id;
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+ await updateDoc(doc(groupDb,'channels',hash,'lessons','2000-01-01'),{marks:{[state.students[0].id]:'anwesend',[pupil]:'entschuldigt'},reportedAt:serverTimestamp()});
+ const before=await ownerRead(ownerDb,id);
+ await assertFails(ownerAction(otherDb,'other-owner',{action:'deleteGroup',id:removed.id},id));
+ await assertFails(ownerAction(groupDb,'group-device',{action:'deleteGroup',id:removed.id},id));
+ const admin=env.authenticatedContext('deletion-admin',{email_verified:true,administrator:true,firebase:{sign_in_provider:'password'}}).firestore() as unknown as Firestore;
+ await assertSucceeds(ownerAction(admin,'deletion-admin',{action:'deleteGroup',id:removed.id},id));
+ const after=await ownerRead(ownerDb,id);
+ assert.equal(after.meta.ownerUid,'owner');assert.equal(after.state.students.length,3);
+ assert.deepEqual(after.state.groups.map(g=>g.id),[kept.id]);
+ assert.ok(after.state.students.filter(p=>p.id!==state.students[2].id).every(p=>p.group===''));
+ assert.deepEqual(after.state.sessions.find(d=>d.date==='2000-01-01'),before.state.sessions.find(d=>d.date==='2000-01-01'));
+ assert.equal(after.state.sessions[0].marks[pupil],'entschuldigt');
+ assert.ok(after.state.sessions[1].roster.filter(p=>p.id!==state.students[2].id).every(p=>p.group===''));
+ await assertFails(getDoc(doc(groupDb,'channels',hash)));
+ await assertFails(getDocs(collection(groupDb,'channels',hash,'lessons')));
+ await assertFails(updateDoc(doc(groupDb,'channels',hash,'lessons','2000-01-01'),{marks:{[pupil]:'anwesend'},reportedAt:serverTimestamp()}));
+ await assertSucceeds(getDoc(doc(groupDb,'channels',keptHash)));
+ await env.withSecurityRulesDisabled(async ctx=>{
+  const db=ctx.firestore() as unknown as Firestore;
+  assert.equal((await getDoc(doc(db,'channels',hash))).exists(),false);
+  assert.equal((await getDocs(collection(db,'channels',hash,'lessons'))).size,0);
+ });
+ await assert.rejects(ownerAction(ownerDb,'owner',{action:'deleteGroup',id:removed.id},id),/Klasse nicht gefunden/);
+});

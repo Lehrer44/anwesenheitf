@@ -62,3 +62,39 @@
 .group-heading>span{margin:0 8px}.group-heading>.textbutton{white-space:nowrap}
 
 .course-picker{display:flex;align-items:flex-end;gap:12px;margin:0 0 20px;flex-wrap:wrap}.course-picker label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600}.course-picker select{min-width:220px;max-width:100%;padding:10px 14px;border:1px solid #d7dfda;border-radius:10px;background:white;font:inherit}.course-picker .btn{min-height:42px}
+
+/* Compact course administration; retain existing type sizes. */
+.topbar{height:44px;padding:0 22px}
+.content{padding:14px 22px 12px;max-width:none}
+.course-picker{align-items:center;gap:8px;margin-bottom:12px}
+.course-picker select{width:auto;min-width:0;max-width:100%;padding:8px 30px 8px 10px;font-size:13px;font-weight:600;border-radius:7px;min-height:36px}
+.course-picker .btn{min-height:36px;padding:7px 10px}
+.stats{gap:12px;margin-bottom:14px}.stat{padding:14px 18px}
+.panelhead{padding:12px 18px}.datecard{padding:16px 18px}
+.matrix.consolidated th,.matrix.consolidated td{padding:5px 7px;min-width:112px;text-align:center}
+.matrix.consolidated th:first-child,.matrix.consolidated td:first-child{min-width:220px;width:220px;max-width:220px;text-align:left}
+.matrix.consolidated .management-column{min-width:104px;width:104px;padding:4px 6px}
+.matrix.consolidated th>button{min-height:34px;padding:5px 7px}
+.matrix.consolidated .order-controls{gap:2px;justify-content:center}
+.matrix.consolidated .order-controls button{min-height:28px;width:28px}
+.matrix.consolidated .attendance-cell{text-align:center;vertical-align:middle}
+.cellstatus{display:block;width:auto;min-height:26px;padding:5px 7px;border-radius:4px;font-size:12px;text-align:center;line-height:1.4;white-space:nowrap}
+.cellstatus.anwesend,.status-btn.anwesend.chosen{color:#fff;background:#17643b}
+.cellstatus.abwesend,.status-btn.abwesend.chosen{color:#fff;background:#ad242b}
+.cellstatus.entschuldigt,.status-btn.entschuldigt.chosen{color:#fff;background:#185fa5}
+.cellstatus.offen{color:#38463f;background:#e4e9e6}
+.dot.anwesend{background:#17643b}.dot.abwesend{background:#ad242b}.dot.entschuldigt{background:#185fa5}.dot.offen{background:#65756b}
+.legend{padding:9px 14px;gap:14px}.legend>span{color:#40584a}
+.matrix.consolidated .cancel-cell{margin:auto;text-align:center}
+.matrix.consolidated .group-divider .class-heading-cell{position:sticky;left:0;z-index:2;min-width:324px;width:324px;max-width:324px;background:var(--group-color);padding:7px 9px;border-left:4px solid var(--group-edge);border-right:1px solid var(--group-edge)}
+.matrix.consolidated .group-heading{position:static;display:flex;flex-wrap:wrap;gap:5px 10px;width:auto;max-width:none;white-space:normal}
+.group-heading>strong{flex:0 1 auto;max-width:100%;overflow-wrap:anywhere;font-size:13px}.group-heading>span{margin:0;font-size:12px}.group-heading>.textbutton{font-size:12px}
+.matrix.consolidated .group-divider .class-band-fill{position:static;border-left:0;padding:0;background:var(--group-color)}
+.matrix.consolidated .name-search .search{min-height:34px}
+.groups-grid{gap:14px}.groupcard{padding:17px}.groupcard-top{margin-bottom:15px}
+.groupcard-footer{align-items:center;justify-content:flex-start;gap:12px;margin-top:15px;padding-top:12px}.groupcard-footer>.muted{margin-left:auto}
+.class-delete{display:inline-flex;align-items:center;justify-content:center;min-width:30px;min-height:30px;padding:5px;color:#a32128;background:transparent;border-radius:5px}.class-delete:hover{background:#fce4e5}
+@media(max-width:760px){.topbar{height:48px;padding:0 14px}.sidebar{top:48px}.content{padding:12px 10px}.course-picker{gap:6px}.course-picker .btn{padding:7px 8px}.course-picker select{max-width:calc(100vw - 20px)}.matrix.consolidated th:first-child,.matrix.consolidated td:first-child{min-width:180px;width:180px;max-width:180px}.matrix.consolidated .group-divider .class-heading-cell{min-width:284px;width:284px;max-width:284px}}
+
+.tablewrap{max-height:calc(100dvh - 164px)}
+@media(max-width:760px){.tablewrap{max-height:calc(100dvh - 205px)}}

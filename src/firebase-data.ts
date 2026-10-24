@@ -11,7 +11,7 @@ const canonical = (value:any):any => Array.isArray(value)?value.map(canonical):v
  ? Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>[k,canonical(v)])):value;
 export const equal = (a:unknown,b:unknown) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
 export async function tokenHash(token:string) {
- if(!/^[a-zA-Z0-9-]{64,160}$/.test(token)) throw Error('Dieser Gruppenlink ist ungültig.');
+ if(!/^[a-zA-Z0-9-]{64,160}$/.test(token)) throw Error('Dieser Klassenlink ist ungültig.');
  return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token)))].map(x=>x.toString(16).padStart(2,'0')).join('');
 }
 export function mergeLessons(state:State,lessons:Lesson[]):State {

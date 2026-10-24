@@ -51,18 +51,18 @@ export async function createCourse(title:string,groupCount:number){
 }
 async function groupRead(access:Access):Promise<Data>{
  await groupUser();const {db}=services(),hash=await tokenHash(access.token),snap=await getDoc(doc(db,'channels',hash));
- if(!snap.exists()||!snap.data().active||snap.data().courseId!==access.course)throw Error('Dieser Gruppenlink ist ungültig oder wurde erneuert.');
+ if(!snap.exists()||!snap.data().active||snap.data().courseId!==access.course)throw Error('Dieser Klassenlink ist ungültig oder wurde erneuert.');
  const lessons=await getDocs(collection(db,'channels',hash,'lessons'));
  return {course:access.course,role:'group',state:groupState(snap.data() as Channel,lessons.docs.map(d=>d.data() as Lesson)),version:0};
 }
 export async function courseRequest(body:any,access:Access):Promise<Data>{
  if(access.token){
   if(body){
-   if(body.action!=='submit')throw Error('Nur die eigene Gruppenmeldung ist erlaubt.');
+   if(body.action!=='submit')throw Error('Nur die eigene Klassenmeldung ist erlaubt.');
    await groupUser();const {db}=services(),hash=await tokenHash(access.token);
    await runTransaction(db,async tx=>{
     const parent=await tx.get(doc(db,'channels',hash));
-    if(!parent.exists()||!parent.data().active||parent.data().courseId!==access.course)throw Error('Dieser Gruppenlink ist ungültig oder wurde erneuert.');
+    if(!parent.exists()||!parent.data().active||parent.data().courseId!==access.course)throw Error('Dieser Klassenlink ist ungültig oder wurde erneuert.');
     const ref=doc(db,'channels',hash,'lessons',String(body.date)),snap=await tx.get(ref);
     if(!snap.exists())throw Error('Termin nicht gefunden.');
     const channel=parent.data() as Channel,state=groupState(channel,[snap.data() as Lesson]);mutate(state,body,state.groups[0]);
@@ -83,7 +83,7 @@ export async function watchCourse(access:Access,onChange:(data:Data)=>void,onErr
   await groupUser();const hash=await tokenHash(access.token);let channel:Channel|null=null,lessons:Lesson[]|null=null;
   const emit=()=>{if(!stopped&&channel&&lessons)onChange({course:access.course,role:'group',state:groupState(channel,lessons),version:0});};
   stops.push(onSnapshot(doc(db,'channels',hash),snap=>{
-   if(!snap.exists()||!snap.data().active||snap.data().courseId!==access.course){channel=null;fail(Error('Dieser Gruppenlink ist ungültig oder wurde erneuert.'));return;}
+   if(!snap.exists()||!snap.data().active||snap.data().courseId!==access.course){channel=null;fail(Error('Dieser Klassenlink ist ungültig oder wurde erneuert.'));return;}
    channel=snap.data() as Channel;emit();
   },fail));
   stops.push(onSnapshot(collection(db,'channels',hash,'lessons'),snap=>{lessons=snap.docs.map(d=>d.data() as Lesson);emit();},fail));

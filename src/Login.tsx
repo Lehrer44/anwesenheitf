@@ -16,7 +16,7 @@ export default function Login({onLogin}:{onLogin:()=>void}) {
  return <div className="login-page"><section className="login-card">
   <div className="brand"><span className="brandmark"><BookOpen size={22}/></span>Kursblick<span className="branddot">.</span></div>
   <div className="eyebrow">DEINE KURSVERWALTUNG</div><h1>{create?'Konto erstellen':'Willkommen zurück.'}</h1>
-  <p>Melde dich mit deinem bestehenden Konto an. Freigeschaltete Administratoren können direkt starten. Gruppenführer öffnen ihren Gruppenlink.</p>
+  <p>Melde dich mit deinem bestehenden Konto an. Freigeschaltete Administratoren können direkt starten. Klassenführer öffnen ihren Klassenlink.</p>
   {!configured()?<div className="alert error">Diese Version ist für Firebase vorbereitet. Das Firebase-Projekt muss noch verbunden werden.</div>:<form onSubmit={submit}>
    <label>E-Mail-Adresse<input autoComplete="email" type="email" value={email} onChange={e=>setEmail(e.target.value)} required/></label>
    <label>Passwort<input autoComplete={create?'new-password':'current-password'} type="password" minLength={8} value={password} onChange={e=>setPassword(e.target.value)} required/></label>
