@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {writeFileSync} from 'node:fs';
-import {initial,mutate,syncFutureSessions,nextSession,groupView,groupedStudents} from '../src/model.ts';
+import {initial,mutate,syncFutureSessions,nextSession,groupView,groupedStudents,attendanceDraft} from '../src/model.ts';
 import {makeXlsx} from '../src/export.ts';
 const s=initial(7),g=s.groups[0];
 mutate(s,{action:'addStudents',names:'Leiter\nAnna\nBen',group:g.id});
@@ -43,3 +43,15 @@ mutate(deletion,{action:'session',date:'2026-01-08'});assert.deepEqual(deletion.
 assert.deepEqual(deletion.sessions[1].marks,{});assert.deepEqual(deletion.sessions[1].reports,{});assert.equal(deletion.sessions[1].cancelled,'');
 for(const date of deletion.sessions.map(d=>d.date))mutate(deletion,{action:'deleteSession',date});assert.equal(deletion.sessions.length,0);
 console.log('Lesson deletion checks passed: owner only, other dates/pupils/classes preserved, group date removed, recreation starts empty.');
+
+// Class form defaults must not change persisted attendance or overwrite existing reports.
+const formState=initial(1);mutate(formState,{action:'addStudents',names:'أحمد\nمحمد\nعلي',group:formState.groups[0].id});
+mutate(formState,{action:'session',date:'2026-10-24'});const lesson=formState.sessions[0],formBefore=structuredClone(lesson);
+const draft=attendanceDraft(lesson);assert.deepEqual(Object.values(draft),['abwesend','abwesend','abwesend']);assert.deepEqual(lesson,formBefore);
+lesson.marks[formState.students[0].id]='anwesend';lesson.marks[formState.students[1].id]='entschuldigt';lesson.marks.removed='anwesend';
+const mixed=attendanceDraft(lesson);assert.deepEqual(mixed,{[formState.students[0].id]:'anwesend',[formState.students[1].id]:'entschuldigt',[formState.students[2].id]:'abwesend'});
+mixed[formState.students[0].id]='abwesend';assert.equal(lesson.marks[formState.students[0].id],'anwesend');
+mutate(formState,{action:'submit',date:lesson.date,marks:attendanceDraft(lesson)},formState.groups[0]);assert.equal(lesson.marks[formState.students[2].id],'abwesend');
+mutate(formState,{action:'resetSession',date:lesson.date});assert.deepEqual(Object.values(attendanceDraft(lesson)),['abwesend','abwesend','abwesend']);
+lesson.cancelled='Ausfall';assert.deepEqual(attendanceDraft(lesson),{});assert.deepEqual(attendanceDraft(),{});
+console.log('Class draft checks passed: absent defaults, existing statuses preserved, no stale pupils, no implicit save, explicit submission, reset and cancelled lessons.');

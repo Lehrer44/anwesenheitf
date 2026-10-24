@@ -3,6 +3,11 @@ export type Group={id:string,name:string,leader:string,leaderId?:string,leaderNe
 export type Status='anwesend'|'abwesend'|'entschuldigt';
 export type Session={date:string,cancelled:string,roster:Student[],marks:Record<string,Status>,reports:Record<string,string>};
 export type State={demo?:boolean,title:string,students:Student[],groups:Group[],sessions:Session[]};
+// Defaults are local form values; a class must explicitly submit before anything is saved.
+export function attendanceDraft(session?:Session):Record<string,Status>{
+ if(!session||session.cancelled)return {};
+ return Object.fromEntries(session.roster.map(p=>[p.id,session.marks[p.id]||'abwesend']));
+}
 export const displayClassName=(name:string)=>name.replace(/^Gruppe(?=\s|$)/,'Klasse');
 function checkedGroupCount(count:number){if(!Number.isInteger(count)||count<0||count>30)throw Error('Bitte eine ganze Klassenanzahl von 0 bis 30 wählen.');return count;}
 const newGroup=(index:number):Group=>({id:crypto.randomUUID(),name:`Klasse ${index+1}`,leader:'',token:crypto.randomUUID()+crypto.randomUUID()});
