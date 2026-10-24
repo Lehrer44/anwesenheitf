@@ -6,6 +6,12 @@ React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und 
 
 Den Namen eines bestehenden Kurses änderst du über **Kursname ändern** direkt neben der Kursauswahl. Der aktuelle Name ist vorausgefüllt. Nach **Speichern** erscheint der neue Name auch in den Gruppenansichten. Schüler, Termine, Anwesenheiten und bestehende Gruppenlinks bleiben erhalten. Kursnamen dürfen nach dem Entfernen äußerer Leerzeichen 1 bis 100 Zeichen lang sein.
 
+## Kompakte Verwaltung
+
+Die Kursauswahl und die Aktionen der jeweiligen Ansicht stehen in einer gemeinsamen Werkzeugzeile. Die Anwesenheitsliste zeigt Meldungen ohne bearbeitbare Auswahlfelder: grün für anwesend, rot für abwesend und blau für entschuldigt. Klassenüberschriften, Schülerzahlen und „Hinzufügen“ bleiben beim horizontalen Scrollen sichtbar.
+
+Unter **Klassen & Links** wird eine Klasse über **Neue Klasse** angelegt und über das Papierkorbsymbol neben **Bearbeiten** entfernt. Der Dialog erklärt die Folgen: Schüler bleiben unter „Ohne Klasse“ im Kurs, historische Termine und Anwesenheiten bleiben erhalten. Heutige und zukünftige Zuteilungen werden aufgehoben; der alte Klassenlink und seine Meldemöglichkeit werden entfernt. Die Löschung erfolgt atomar über die bestehende Firebase-Transaktion. Interne Datenfelder und URL-Parameter behalten ihre bisherigen Namen, damit bestehende Klassenlinks funktionieren.
+
 ## Stand und Freischaltung
 
 Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Der bestehende Kurs wurde am 24. Oktober 2026 aus Supabase übernommen: 134 Schüler, 7 Gruppen und 14 Termine. Alle 121 Zieldokumente wurden vollständig nachgelesen und verglichen. Die Quelle blieb unverändert. Die alten Gruppenlinks bleiben beim bisherigen Backend; Firebase verwendet neue Links. Die Firebase-Version ist in `main` integriert und auf https://lehrer44.github.io/anwesenheitsapp/ veröffentlicht.

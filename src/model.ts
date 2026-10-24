@@ -3,8 +3,9 @@ export type Group={id:string,name:string,leader:string,leaderId?:string,leaderNe
 export type Status='anwesend'|'abwesend'|'entschuldigt';
 export type Session={date:string,cancelled:string,roster:Student[],marks:Record<string,Status>,reports:Record<string,string>};
 export type State={demo?:boolean,title:string,students:Student[],groups:Group[],sessions:Session[]};
-function checkedGroupCount(count:number){if(!Number.isInteger(count)||count<0||count>30)throw Error('Bitte eine ganze Gruppenanzahl von 0 bis 30 wählen.');return count;}
-const newGroup=(index:number):Group=>({id:crypto.randomUUID(),name:`Gruppe ${index+1}`,leader:'',token:crypto.randomUUID()+crypto.randomUUID()});
+export const displayClassName=(name:string)=>name.replace(/^Gruppe(?=\s|$)/,'Klasse');
+function checkedGroupCount(count:number){if(!Number.isInteger(count)||count<0||count>30)throw Error('Bitte eine ganze Klassenanzahl von 0 bis 30 wählen.');return count;}
+const newGroup=(index:number):Group=>({id:crypto.randomUUID(),name:`Klasse ${index+1}`,leader:'',token:crypto.randomUUID()+crypto.randomUUID()});
 export function initial(groupCount=0):State{return {title:'Mein Wochenkurs',students:[],groups:Array.from({length:checkedGroupCount(groupCount)},(_,i)=>newGroup(i)),sessions:[]};}
 const nameKey=(name:string)=>name.trim().normalize('NFKC').toLocaleLowerCase('de');
 function chooseLeader(s:State,g:Group,name:string,id?:string){
@@ -12,8 +13,8 @@ function chooseLeader(s:State,g:Group,name:string,id?:string){
  if(!name&&!id){g.leader='';delete g.leaderId;delete g.leaderNeedsSelection;return;}
  let p=id?s.students.find(p=>p.id===id):undefined;
  if(id&&!p)throw Error('Der ausgewählte Schüler wurde nicht gefunden.');
- if(!p){const matches=s.students.filter(p=>nameKey(p.name)===nameKey(name));if(matches.length>1)throw Error('Dieser Name kommt mehrfach vor. Bitte den Gruppenführer über die Schülerauswahl eindeutig auswählen.');p=matches[0];}
- if(p&&s.groups.some(other=>other.id!==g.id&&other.leaderId===p!.id))throw Error('Dieser Schüler führt bereits eine andere Gruppe. Bitte dort zuerst den Gruppenführer ändern.');
+ if(!p){const matches=s.students.filter(p=>nameKey(p.name)===nameKey(name));if(matches.length>1)throw Error('Dieser Name kommt mehrfach vor. Bitte den Klassenführer über die Schülerauswahl eindeutig auswählen.');p=matches[0];}
+ if(p&&s.groups.some(other=>other.id!==g.id&&other.leaderId===p!.id))throw Error('Dieser Schüler führt bereits eine andere Klasse. Bitte dort zuerst den Klassenführer ändern.');
  if(!p){if(s.students.length>=5000)throw Error('Maximal 5.000 Schüler.');p={id:crypto.randomUUID(),name,group:g.id};s.students.push(p);}
  p.group=g.id;p.archived=false;g.leader=p.name;g.leaderId=p.id;delete g.leaderNeedsSelection;
 }
@@ -30,7 +31,7 @@ export function normalizeLeaders(s:State){
 }
 export const courseToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
 export function nextSession(s:State,today=courseToday()){const dates=s.sessions.map(d=>d.date).sort();return dates.find(d=>d>=today)||dates.at(-1)||'';}
-export function groupedStudents(s:State){return [...s.groups.map(g=>({id:g.id,name:g.name,students:s.students.filter(p=>p.group===g.id)})),{id:'',name:'Ohne Gruppe',students:s.students.filter(p=>!s.groups.some(g=>g.id===p.group))}];}
+export function groupedStudents(s:State){return [...s.groups.map(g=>({id:g.id,name:displayClassName(g.name),students:s.students.filter(p=>p.group===g.id)})),{id:'',name:'Ohne Klasse',students:s.students.filter(p=>!s.groups.some(g=>g.id===p.group))}];}
 export function orderedRoster(s:State,roster:Student[]){const ranks=new Map(s.students.map((p,i)=>[p.id,i]));return [...roster].sort((a,b)=>(ranks.get(a.id)??Infinity)-(ranks.get(b.id)??Infinity));}
 // Keep today's and future lessons in step with enrollment. Past snapshots are immutable.
 export function syncFutureSessions(s:State,today=courseToday()){
@@ -45,10 +46,10 @@ export function syncFutureSessions(s:State,today=courseToday()){
 export function mutate(s:State,b:any,group?:Group):void {
  const find=()=>{const d=s.sessions.find(x=>x.date===b.date);if(!d)throw Error('Termin nicht gefunden.');return d;};
  if(group){
-  if(b.action!=='submit')throw Error('Nur die eigene Gruppenmeldung ist erlaubt.');
+  if(b.action!=='submit')throw Error('Nur die eigene Klassenmeldung ist erlaubt.');
   const d=find();if(d.cancelled)throw Error('Dieser Unterricht fällt aus.');
   const ids=d.roster.filter(x=>x.group===group.id).map(x=>x.id);
-  if(!ids.length)throw Error('Für diese Gruppe sind keine Schüler zugeteilt.');
+  if(!ids.length)throw Error('Für diese Klasse sind keine Schüler zugeteilt.');
   if(!b.marks||Object.keys(b.marks).length!==ids.length||ids.some(id=>!['anwesend','abwesend','entschuldigt'].includes(b.marks[id])))throw Error('Bitte für jeden Schüler einen Status wählen.');
   ids.forEach(id=>d.marks[id]=b.marks[id]);d.reports[group.id]=new Date().toISOString();return;
  }
@@ -64,17 +65,17 @@ export function mutate(s:State,b:any,group?:Group):void {
   if(!names.length)throw Error('Bitte mindestens einen Namen eingeben.');
   names.forEach(name=>s.students.push({id:crypto.randomUUID(),name,group:s.groups.some(g=>g.id===b.group)?b.group:''}));break;}
  case 'demo':{
-  if(!s.groups.length)throw Error('Bitte zunächst mindestens eine Gruppe anlegen.');
+  if(!s.groups.length)throw Error('Bitte zunächst mindestens eine Klasse anlegen.');
   if(s.students.length||s.sessions.length)throw Error('Beispieldaten sind nur in einem leeren Kurs möglich.');
   s.demo=true;for(let i=0;i<100;i++)s.students.push({id:crypto.randomUUID(),name:`Beispielschüler ${String(i+1).padStart(3,'0')}`,group:s.groups[i%s.groups.length].id});break;}
  case 'clearDemo':{if(!s.demo)throw Error('Dieser Kurs enthält keine Beispieldaten.');s.students=[];s.sessions=[];s.demo=false;break;}
- case 'assign':{const p=s.students.find(x=>x.id===b.id);if(!p)throw Error('Schüler nicht gefunden.');if(b.group&&!s.groups.some(g=>g.id===b.group))throw Error('Gruppe nicht gefunden.');const led=s.groups.find(g=>g.leaderId===p.id);if(led&&b.group!==led.id)throw Error('Ein Gruppenführer bleibt Schüler seiner eigenen Gruppe. Bitte zuerst den Gruppenführer ändern.');p.group=b.group||'';break;}
+ case 'assign':{const p=s.students.find(x=>x.id===b.id);if(!p)throw Error('Schüler nicht gefunden.');if(b.group&&!s.groups.some(g=>g.id===b.group))throw Error('Klasse nicht gefunden.');const led=s.groups.find(g=>g.leaderId===p.id);if(led&&b.group!==led.id)throw Error('Ein Klassenführer bleibt Schüler seiner eigenen Klasse. Bitte zuerst den Klassenführer ändern.');p.group=b.group||'';break;}
  case 'reorder':{
   const p=s.students.find(p=>p.id===b.id);if(!p||![-1,1].includes(b.direction))throw Error('Ungültige Reihenfolge.');
-  const peers=s.students.filter(x=>x.group===p.group);const target=peers[peers.indexOf(p)+b.direction];if(!target)throw Error('Der Schüler steht bereits am Rand seiner Gruppe.');
+  const peers=s.students.filter(x=>x.group===p.group);const target=peers[peers.indexOf(p)+b.direction];if(!target)throw Error('Der Schüler steht bereits am Rand seiner Klasse.');
   const a=s.students.indexOf(p),z=s.students.indexOf(target);[s.students[a],s.students[z]]=[s.students[z],s.students[a]];break;}
  case 'renameStudent':{const p=s.students.find(x=>x.id===b.id);const name=String(b.name||'').trim();if(!p||!name||name.length>150)throw Error('Bitte einen gültigen Namen eingeben.');p.name=name;s.groups.filter(g=>g.leaderId===p.id).forEach(g=>g.leader=name);break;}
- case 'archive':{const p=s.students.find(x=>x.id===b.id);if(p){if(!p.archived&&s.groups.some(g=>g.leaderId===p.id))throw Error('Bitte zuerst einen anderen Gruppenführer festlegen, bevor du diesen Schüler archivierst.');p.archived=!p.archived;}break;}
+ case 'archive':{const p=s.students.find(x=>x.id===b.id);if(p){if(!p.archived&&s.groups.some(g=>g.leaderId===p.id))throw Error('Bitte zuerst einen anderen Klassenführer festlegen, bevor du diesen Schüler archivierst.');p.archived=!p.archived;}break;}
  case 'deleteStudent':{
   if(!s.students.some(p=>p.id===b.id))throw Error('Schüler nicht gefunden.');
   s.students=s.students.filter(p=>p.id!==b.id);
@@ -82,22 +83,27 @@ export function mutate(s:State,b:any,group?:Group):void {
   for(const d of s.sessions){const removed=d.roster.find(p=>p.id===b.id);d.roster=d.roster.filter(p=>p.id!==b.id);delete d.marks[b.id];if(removed&&!d.roster.some(p=>p.group===removed.group))delete d.reports[removed.group];}
   break;}
  case 'distribute':{
-  if(!s.groups.length)throw Error('Bitte zunächst Gruppen anlegen.');
+  if(!s.groups.length)throw Error('Bitte zunächst Klassen anlegen.');
   const pinned=new Map(s.groups.filter(g=>g.leaderId).map(g=>[g.leaderId!,g.id]));
   const counts=new Map(s.groups.map(g=>[g.id,0]));
   const active=s.students.filter(p=>!p.archived);
   active.filter(p=>pinned.has(p.id)).forEach(p=>{p.group=pinned.get(p.id)!;counts.set(p.group,counts.get(p.group)!+1);});
   for(const p of active.filter(p=>!pinned.has(p.id))){const g=s.groups.reduce((a,b)=>counts.get(a.id)!<=counts.get(b.id)!?a:b);p.group=g.id;counts.set(g.id,counts.get(g.id)!+1);}
   break;}
+ case 'deleteGroup':{
+  if(!s.groups.some(g=>g.id===b.id))throw Error('Klasse nicht gefunden.');
+  s.groups=s.groups.filter(g=>g.id!==b.id);
+  for(const p of s.students)if(p.group===b.id)p.group='';
+  break;}
  case 'groupCount':{
   const count=checkedGroupCount(b.count),removed=s.groups.slice(count),removedIds=new Set(removed.map(g=>g.id));
-  if(removed.some(g=>g.leader||g.leaderId)||s.students.some(p=>removedIds.has(p.group))||s.sessions.some(d=>d.roster.some(p=>removedIds.has(p.group))||Object.keys(d.reports).some(id=>removedIds.has(id))))throw Error('Die letzten Gruppen enthalten noch Schüler, Gruppenführer oder frühere Termine. Diese Gruppen bleiben erhalten. Nur vollständig unbenutzte Gruppen können entfernt werden.');
+  if(removed.some(g=>g.leader||g.leaderId)||s.students.some(p=>removedIds.has(p.group))||s.sessions.some(d=>d.roster.some(p=>removedIds.has(p.group))||Object.keys(d.reports).some(id=>removedIds.has(id))))throw Error('Die letzten Klassen enthalten noch Schüler, Klassenführer oder frühere Termine. Diese Klassen bleiben erhalten. Nur vollständig unbenutzte Klassen können entfernt werden.');
   s.groups=s.groups.slice(0,count);while(s.groups.length<count)s.groups.push(newGroup(s.groups.length));break;
  }
  case 'group':{
-  const name=String(b.name||'').trim().slice(0,100);if(!name)throw Error('Bitte einen Gruppennamen eingeben.');
+  const name=String(b.name||'').trim().slice(0,100);if(!name)throw Error('Bitte einen Klassennamen eingeben.');
   let g=s.groups.find(x=>x.id===b.id);const isNew=!g;
-  if(!g){if(s.groups.length>=30)throw Error('Maximal 30 Gruppen.');g={id:crypto.randomUUID(),name,leader:'',token:crypto.randomUUID()+crypto.randomUUID()};}
+  if(!g){if(s.groups.length>=30)throw Error('Maximal 30 Klassen.');g={id:crypto.randomUUID(),name,leader:'',token:crypto.randomUUID()+crypto.randomUUID()};}
   chooseLeader(s,g,String(b.leader||''),b.leaderId||undefined);g.name=name;if(isNew)s.groups.push(g);break;}
  case 'rotate':{const g=s.groups.find(x=>x.id===b.id);if(g)g.token=crypto.randomUUID()+crypto.randomUUID();break;}
  case 'session':{
@@ -112,5 +118,5 @@ export function mutate(s:State,b:any,group?:Group):void {
  default:throw Error('Unbekannte Aktion.');
  }
 }
-export function groupView(s:State,g:Group):State{return {title:s.title,groups:[{id:g.id,name:g.name,leader:g.leader,leaderId:g.leaderId}],students:s.students.filter(x=>x.group===g.id&&!x.archived),sessions:s.sessions.filter(d=>d.roster.some(p=>p.group===g.id)).map(d=>{const roster=orderedRoster(s,d.roster.filter(p=>p.group===g.id));return {...d,roster,marks:Object.fromEntries(roster.filter(p=>d.marks[p.id]).map(p=>[p.id,d.marks[p.id]])),reports:d.reports[g.id]?{[g.id]:d.reports[g.id]}:{}};})};}
+export function groupView(s:State,g:Group):State{return {title:s.title,groups:[{id:g.id,name:displayClassName(g.name),leader:g.leader,leaderId:g.leaderId}],students:s.students.filter(x=>x.group===g.id&&!x.archived),sessions:s.sessions.filter(d=>d.roster.some(p=>p.group===g.id)).map(d=>{const roster=orderedRoster(s,d.roster.filter(p=>p.group===g.id));return {...d,roster,marks:Object.fromEntries(roster.filter(p=>d.marks[p.id]).map(p=>[p.id,d.marks[p.id]])),reports:d.reports[g.id]?{[g.id]:d.reports[g.id]}:{}};})};}
 

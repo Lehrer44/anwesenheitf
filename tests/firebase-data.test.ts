@@ -55,3 +55,18 @@ assert.throws(()=>mutate(empty,{action:'groupCount',count:1.5}));assert.throws((
 assert.throws(()=>mutate(state,{action:'groupCount',count:0}));assert.throws(()=>mutate(state,{action:'groupCount',count:3},state.groups[0]));
 const historical=structuredClone(state);historical.students=[];assert.throws(()=>mutate(historical,{action:'groupCount',count:0}));
 console.log('Firebase data checks passed: manual group count, safe resizing, split dates, group isolation, report merge, stale rosters, reset and link revocation.');
+
+// Removing a populated class retains history and pupils, and removes its channel documents.
+const removal=structuredClone(merged),removedClass=removal.groups[0],keptClass=structuredClone(removal.groups[1]);
+const historic=structuredClone(removal.sessions),beforeRemoval=await documentsFor(removal,'course','owner',0);
+assert.throws(()=>mutate(removal,{action:'deleteGroup',id:removedClass.id},removedClass));
+mutate(removal,{action:'deleteGroup',id:removedClass.id});
+assert.equal(removal.students.length,merged.students.length);
+assert.ok(removal.students.filter(p=>merged.students.find(x=>x.id===p.id)?.group===removedClass.id).every(p=>p.group===''));
+assert.deepEqual(removal.sessions,historic);assert.deepEqual(removal.groups,[keptClass]);
+const removalChanges=changesBetween(beforeRemoval,await documentsFor(removal,'course','owner',1));
+assert.deepEqual(removalChanges.deletes.sort(),[...beforeRemoval.keys()].filter(p=>p==='channels/'+hash||p.startsWith('channels/'+hash+'/')).sort());
+assert.throws(()=>mutate(removal,{action:'deleteGroup',id:'missing'}),/Klasse nicht gefunden/);
+mutate(removal,{action:'deleteGroup',id:keptClass.id});assert.equal(removal.groups.length,0);
+mutate(removal,{action:'group',name:'Neue Klasse',leader:''});assert.equal(removal.groups.length,1);
+console.log('Class deletion checks passed: pupils and historical attendance preserved; links removed; group submissions cannot delete classes.');
