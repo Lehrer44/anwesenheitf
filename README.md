@@ -1,10 +1,10 @@
 # Kursblick / Anwesenheitsapp – Firebase Spark
 
-Einfache Anwesenheitsverwaltung: Gruppenleitung öffnet einen geheimen Gruppenlink, prüft alle Namen und sendet die Anwesenheit. Die Kursleitung sieht die Meldungen unmittelbar und kann eine Excel-Datei auf den eigenen Rechner herunterladen.
+Einfache Anwesenheitsverwaltung: Klassenleitung öffnet einen geheimen Klassenlink, prüft alle Namen und sendet die Anwesenheit. Die Kursleitung sieht die Meldungen unmittelbar und kann eine Excel-Datei auf den eigenen Rechner herunterladen.
 
-React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Beim Anlegen wählt die Kursleitung die Gruppenanzahl selbst (0 bis 30); es gibt keine voreingestellte Anzahl. Die Anzahl lässt sich später pro Kurs ändern. Beim Reduzieren werden nur vollständig unbenutzte Gruppen am Listenende entfernt. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Gezielt freigeschaltete Administratoren können sämtliche Kurse gemeinsam verwalten. Eine normale Registrierung vergibt keine Administratorrechte.
+React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Beim Anlegen wählt die Kursleitung die Klassenanzahl selbst (0 bis 30); es gibt keine voreingestellte Anzahl. Weitere Klassen lassen sich später über „Neue Klasse“ hinzufügen und über das Papierkorbsymbol nach Bestätigung entfernen. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Gezielt freigeschaltete Administratoren können sämtliche Kurse gemeinsam verwalten. Eine normale Registrierung vergibt keine Administratorrechte.
 
-Den Namen eines bestehenden Kurses änderst du über **Kursname ändern** direkt neben der Kursauswahl. Der aktuelle Name ist vorausgefüllt. Nach **Speichern** erscheint der neue Name auch in den Gruppenansichten. Schüler, Termine, Anwesenheiten und bestehende Gruppenlinks bleiben erhalten. Kursnamen dürfen nach dem Entfernen äußerer Leerzeichen 1 bis 100 Zeichen lang sein.
+Den Namen eines bestehenden Kurses änderst du über **Kursname ändern** direkt neben der Kursauswahl. Der aktuelle Name ist vorausgefüllt. Nach **Speichern** erscheint der neue Name auch in den Klassenansichten. Schüler, Termine, Anwesenheiten und bestehende Klassenlinks bleiben erhalten. Kursnamen dürfen nach dem Entfernen äußerer Leerzeichen 1 bis 100 Zeichen lang sein.
 
 ## Kompakte Verwaltung
 
@@ -14,9 +14,9 @@ Unter **Klassen & Links** wird eine Klasse über **Neue Klasse** angelegt und ü
 
 ## Stand und Freischaltung
 
-Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Der bestehende Kurs wurde am 24. Oktober 2026 aus Supabase übernommen: 134 Schüler, 7 Gruppen und 14 Termine. Alle 121 Zieldokumente wurden vollständig nachgelesen und verglichen. Die Quelle blieb unverändert. Die alten Gruppenlinks bleiben beim bisherigen Backend; Firebase verwendet neue Links. Die Firebase-Version ist in `main` integriert und auf https://lehrer44.github.io/anwesenheitsapp/ veröffentlicht.
+Das vorhandene Firebase-Projekt **Anwesenheitsliste** (`anwesenheitsliste-5b437`) ist eingerichtet: Spark ohne aktive Abrechnung, Firestore Standard in Frankfurt (`europe-west3`, `freeTier: true`), E-Mail/Passwort, anonyme Anmeldung, Domains, Regeln und Indexausnahmen. Die öffentliche Webkonfiguration steht in `src/firebase-config.json`. Der bestehende Kurs wurde am 24. Oktober 2026 aus Supabase übernommen: 134 Schüler, 7 Klassen und 14 Termine. Alle 121 Zieldokumente wurden vollständig nachgelesen und verglichen. Die Quelle blieb unverändert. Die alten Klassenlinks bleiben beim bisherigen Backend; Firebase verwendet neue Links. Die Firebase-Version ist in `main` integriert und auf https://lehrer44.github.io/anwesenheitsapp/ veröffentlicht.
 
-Am echten Firebase-Projekt wurden die anonyme Anmeldung und die Sperren für Kurslisten, fremde Kurse und ungültige Gruppenlinks geprüft. Das temporäre anonyme Prüfkonto wurde entfernt. Die veröffentlichten Regeln wurden mit dem lokalen getesteten Stand verglichen. Die Anwendung verwendet ausschließlich Firebase. Der alte Backend-Code, die Edge-Tests und das abgeschlossene Importwerkzeug wurden aus dem aktuellen Repository-Stand entfernt.
+Am echten Firebase-Projekt wurden die anonyme Anmeldung und die Sperren für Kurslisten, fremde Kurse und ungültige Klassenlinks geprüft. Das temporäre anonyme Prüfkonto wurde entfernt. Die veröffentlichten Regeln wurden mit dem lokalen getesteten Stand verglichen. Die Anwendung verwendet ausschließlich Firebase. Der alte Backend-Code, die Edge-Tests und das abgeschlossene Importwerkzeug wurden aus dem aktuellen Repository-Stand entfernt.
 
 Für dieses Projekt ist die Einrichtung abgeschlossen. Für ein anderes Zielprojekt:
 
@@ -35,8 +35,8 @@ Für dieses Projekt ist die Einrichtung abgeschlossen. Für ein anderes Zielproj
    - `VITE_FIREBASE_PROJECT_ID`
    - `VITE_FIREBASE_APP_ID`
    Teilweise gesetzte Variablen werden abgelehnt, damit keine Konfiguration verschiedener Projekte vermischt wird.
-7. Kursleitungs-Konto erstellen und E-Mail bestätigen oder das konkrete Administratorkonto ausdrücklich manuell freigeben (siehe unten). Beim ersten Login wird kein Kurs automatisch angelegt. Name und Gruppenanzahl werden im Anlegedialog gewählt.
-8. Anwendung und Gruppenmeldungen prüfen, auf GitHub Pages veröffentlichen und die zu diesem Projekt gehörenden Gruppenlinks verteilen.
+7. Kursleitungs-Konto erstellen und E-Mail bestätigen oder das konkrete Administratorkonto ausdrücklich manuell freigeben (siehe unten). Beim ersten Login wird kein Kurs automatisch angelegt. Name und Klassenanzahl werden im Anlegedialog gewählt.
+8. Anwendung und Klassenmeldungen prüfen, auf GitHub Pages veröffentlichen und die zu diesem Projekt gehörenden Klassenlinks verteilen.
 
 Die Firebase-Webkonfiguration darf im Browser sichtbar sein. **Service-Account-Schlüssel, Admin-SDK-Zugangsdaten und Supabase-Service-Role-Keys gehören niemals in VITE-Variablen, Repository-Dateien oder Actions-Logs.** Es gibt keinen automatischen Rückgriff auf das bisherige Supabase-Projekt.
 
@@ -44,7 +44,7 @@ Die Firebase-Webkonfiguration darf im Browser sichtbar sein. **Service-Account-S
 
 Die Anwendung verwendet keine Cloud Functions, kein Cloud Storage, keinen Dateiupload, keinen kostenpflichtigen Auth-Anbieter und kein Firebase App Hosting. Excel wird im Browser erzeugt und nur lokal heruntergeladen.
 
-Spark hat feste Nutzungskontingente. Für Firestore Standard sind dies derzeit 1 GiB Daten, 50.000 Lesevorgänge und 20.000 Schreibvorgänge pro Tag. Die Kontingente gelten für alle Kurse des Projekts zusammen. Wenige Gruppen und Kursleitungen sind ein kleiner Anwendungsfall; die tatsächliche Nutzung muss nach der Einrichtung geprüft werden. Firebase garantiert mit Spark keine unbegrenzte Verfügbarkeit. Eine mit Supabase vergleichbare Sieben-Tage-Inaktivitätspause ist für Firestore nicht dokumentiert.
+Spark hat feste Nutzungskontingente. Für Firestore Standard sind dies derzeit 1 GiB Daten, 50.000 Lesevorgänge und 20.000 Schreibvorgänge pro Tag. Die Kontingente gelten für alle Kurse des Projekts zusammen. Wenige Klassen und Kursleitungen sind ein kleiner Anwendungsfall; die tatsächliche Nutzung muss nach der Einrichtung geprüft werden. Firebase garantiert mit Spark keine unbegrenzte Verfügbarkeit. Eine mit Supabase vergleichbare Sieben-Tage-Inaktivitätspause ist für Firestore nicht dokumentiert.
 
 Die Ansichten verwenden Echtzeit-Abonnements statt 20-Sekunden-Polling. Beim Öffnen wird die Kurshistorie geladen; Bearbeitungen der Kursleitung lesen den betroffenen Kurs im Rahmen einer Transaktion erneut. Sehr große Historien benötigen später eine Archivierung/gezieltere Abfragen. Einzelne Aktionen sind auf 400 geänderte Dokumente und Dokumente vorsorglich auf etwa 850 kB begrenzt; vor Überschreitung wird ohne Teiländerungen abgebrochen.
 
@@ -58,22 +58,22 @@ Bei ausbleibenden Bestätigungs-E-Mails darf eine vertrauenswürdige Projektadmi
 
 Die Freigabe behebt nicht die Mailzustellung. Insbesondere kann auch ein späteres Zurücksetzen des Passworts per E-Mail scheitern. Ein vergessenes Passwort muss dann über die vertrauenswürdige Projektadministration wiederhergestellt werden. Zugangsdaten dürfen niemals in Chat, Frontend oder Repository abgelegt werden.
 
-Diese Rolle erlaubt Lesen, Anlegen und Bearbeiten aller Kurse einschließlich Gruppen, Terminen und Exporten. Reguläre Kursleitungen behalten ausschließlich ihre eigenen Kurse. Gruppenlinks bleiben auf ihre Gruppe begrenzt. Auch Administratoren können im Browser keine Rollen verteilen, ändern oder auflisten. Zum Widerruf das Claim über denselben vertrauenswürdigen Zugang auf `false` setzen. Bereits ausgestellte ID-Tokens bleiben bis zu ihrem Ablauf (bis zu einer Stunde) gültig; eine erneute Anmeldung/Token-Erneuerung übernimmt den Widerruf. Bereits gelesene Daten können nicht rückwirkend zurückgerufen werden.
+Diese Rolle erlaubt Lesen, Anlegen und Bearbeiten aller Kurse einschließlich Klassen, Terminen und Exporten. Reguläre Kursleitungen behalten ausschließlich ihre eigenen Kurse. Klassenlinks bleiben auf ihre Klasse begrenzt. Auch Administratoren können im Browser keine Rollen verteilen, ändern oder auflisten. Zum Widerruf das Claim über denselben vertrauenswürdigen Zugang auf `false` setzen. Bereits ausgestellte ID-Tokens bleiben bis zu ihrem Ablauf (bis zu einer Stunde) gültig; eine erneute Anmeldung/Token-Erneuerung übernimmt den Widerruf. Bereits gelesene Daten können nicht rückwirkend zurückgerufen werden.
 
-Die ursprüngliche `ownerUid` eines Kurses bleibt bei gemeinsamer Bearbeitung unverändert. Bestehende Daten benötigen dafür keine Umschreibung. Gleichzeitige Änderungen mehrerer Administratoren und Gruppen verwenden dieselben Transaktionen wie bisher. Die Administratorrolle benötigt weder Cloud Functions noch einen kostenpflichtigen Tarif.
+Die ursprüngliche `ownerUid` eines Kurses bleibt bei gemeinsamer Bearbeitung unverändert. Bestehende Daten benötigen dafür keine Umschreibung. Gleichzeitige Änderungen mehrerer Administratoren und Klassen verwenden dieselben Transaktionen wie bisher. Die Administratorrolle benötigt weder Cloud Functions noch einen kostenpflichtigen Tarif.
 
 ## Berechtigungen und Datenmodell
 
 - Firebase Auth: ausschließlich serverseitig vergebene gemeinsame Rolle `administrator: true`, zusätzlich bestätigte E-Mail oder ausdrückliche manuelle Kontofreigabe erforderlich.
 - `courses/{id}`: unveränderliche Kursleitung, Titel, Version, Terminliste.
-- `courses/{id}/private/config`: Schüler, Gruppen, geheime Tokens; nur die Kursleitung und freigeschaltete Administratoren.
+- `courses/{id}/private/config`: Schüler, Klassen, geheime Tokens; nur die Kursleitung und freigeschaltete Administratoren.
 - `courses/{id}/sessions/{date}`: vollständige historische Teilnehmerliste pro Termin; nur die Kursleitung und freigeschaltete Administratoren.
-- `channels/{SHA256(token)}`: begrenzte Gruppenansicht ohne andere Gruppen oder geheime Tokens.
-- `channels/{hash}/lessons/{date}`: Teilnehmer und Meldung genau dieser Gruppe an diesem Termin.
+- `channels/{SHA256(token)}`: begrenzte Klassenansicht ohne andere Klassen oder geheime Tokens.
+- `channels/{hash}/lessons/{date}`: Teilnehmer und Meldung genau dieser Klasse an diesem Termin.
 
-Ein Gruppenlink ist ein **geheimer Zugangsschlüssel**, keine persönliche Identitätsprüfung. Wer ihn besitzt, darf die betreffende Gruppe lesen und melden. Im Hintergrund erfolgt eine anonyme Firebase-Anmeldung; es gibt kein zusätzliches Passwortformular. Die unvorhersehbaren Kanaladressen dürfen nicht aufgelistet werden. Tokens stehen weiterhin ausschließlich im URL-Fragment und werden nicht als Seitenadresse an GitHub Pages übertragen.
+Ein Klassenlink ist ein **geheimer Zugangsschlüssel**, keine persönliche Identitätsprüfung. Wer ihn besitzt, darf die betreffende Klasse lesen und melden. Im Hintergrund erfolgt eine anonyme Firebase-Anmeldung; es gibt kein zusätzliches Passwortformular. Die unvorhersehbaren Kanaladressen dürfen nicht aufgelistet werden. Tokens stehen weiterhin ausschließlich im URL-Fragment und werden nicht als Seitenadresse an GitHub Pages übertragen.
 
-Gruppen dürfen nur vollständige Meldungen für die eigenen Teilnehmer mit gültigen Statuswerten und Serverzeitstempel ersetzen. Sie dürfen keine Namen, Zuteilungen, Berechtigungen oder Ausfälle verändern. Ausgefallene Termine und veraltete Teilnehmerlisten werden geprüft. Beim Erneuern eines Links werden der alte Kanal und seine Termindokumente atomar entfernt. Ein bereits geöffnetes Gruppenfenster erhält dann einen Zugriffsfehler.
+Klassen dürfen nur vollständige Meldungen für die eigenen Teilnehmer mit gültigen Statuswerten und Serverzeitstempel ersetzen. Sie dürfen keine Namen, Zuteilungen, Berechtigungen oder Ausfälle verändern. Ausgefallene Termine und veraltete Teilnehmerlisten werden geprüft. Beim Erneuern eines Links werden der alte Kanal und seine Termindokumente atomar entfernt. Ein bereits geöffnetes Klassenfenster erhält dann einen Zugriffsfehler.
 
 Die Kursleitung führt Meldungen und historische Teilnehmerlisten für Anzeige/Export zusammen. Transaktionen schützen gleichzeitige Meldungen vor Überschreiben. Das Firebase SDK verwendet hier nur den Speichercache, keine dauerhafte Firestore-Datenablage im Browser.
 
@@ -102,4 +102,4 @@ GitHub Actions führt Modelltests, Regeltests und Build auch für Pull Requests 
 
 Der vorhandene Kurs wurde vollständig nach Firebase übernommen und dort geprüft. Die Anwendung benötigt weder eine Supabase-Verbindung noch Zugangsdaten des früheren Backends. Das einmalige Importwerkzeug und die alten Supabase-Dateien wurden nach der erfolgreichen Umschaltung entfernt. Frühere Quellstände bleiben über die Git-Versionsgeschichte nachvollziehbar.
 
-Die Firebase-Gruppenlinks unterscheiden sich von den früheren Links. Nur Links aus der aktuellen App verwenden. Das Entfernen der Repository-Dateien löscht kein externes Supabase-Projekt und keine dort gespeicherten Daten.
+Die Firebase-Klassenlinks unterscheiden sich von den früheren Links. Nur Links aus der aktuellen App verwenden. Das Entfernen der Repository-Dateien löscht kein externes Supabase-Projekt und keine dort gespeicherten Daten.
