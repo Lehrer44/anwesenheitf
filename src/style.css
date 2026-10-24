@@ -98,3 +98,6 @@
 
 .tablewrap{max-height:calc(100dvh - 164px)}
 @media(max-width:760px){.tablewrap{max-height:calc(100dvh - 205px)}}
+
+.course-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-left:auto}
+@media(max-width:760px){.course-actions{gap:6px}}
