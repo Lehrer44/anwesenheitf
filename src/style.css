@@ -119,5 +119,21 @@
 .matrix.consolidated .management-column,.matrix.consolidated .attendance-cell,.matrix.consolidated thead th:not(.number-column):not(.student-column){direction:ltr}
 .matrix.consolidated .group-divider .class-heading-cell{left:auto;right:0;min-width:calc(var(--number-width) + var(--student-width) + var(--management-width));width:calc(var(--number-width) + var(--student-width) + var(--management-width));max-width:calc(var(--number-width) + var(--student-width) + var(--management-width));text-align:left;border-left:1px solid var(--group-edge);border-right:4px solid var(--group-edge);z-index:4}
 .matrix.consolidated .name-search .search{direction:ltr}.matrix.consolidated .name-search .search input{text-align:right}
-.modal button+.btn.danger{margin-inline-start:8px}
+
 @media(max-width:760px){.sidebar{top:48px;width:240px}.sidebar-backdrop{top:48px}.matrix.consolidated{--number-width:34px;--student-width:150px;--management-width:92px}.matrix.consolidated .management-column{min-width:var(--management-width);width:var(--management-width);padding:4px 3px}}
+
+/* Names use Calibri when installed; keep a readable system fallback. */
+.matrix .student-label,.groupcard .leader,.group-panel .student-label,.group-panel .leader-name{font-family:Calibri,Arial,sans-serif}
+.lesson-actions{display:flex;align-items:stretch;gap:8px}
+.lesson-actions .btn{flex:1;min-width:0;white-space:normal;margin:0;min-height:40px;vertical-align:middle}.lesson-actions svg{flex-shrink:0}
+.group-mode .pagehead{margin-bottom:12px}
+.group-panel .panelhead{padding:10px 14px;gap:10px}
+.group-panel .leader-name{margin-top:4px;line-height:1.3;text-align:right}
+.group-panel .group-tools{padding:8px 14px;align-items:center}.group-panel .group-tools small{margin-top:3px}
+.group-panel .checkrow{flex-direction:row-reverse;padding:7px 14px;gap:12px}
+.group-panel .studentname{flex:1;min-width:0;flex-direction:row-reverse;align-items:center;gap:8px}
+.group-panel .studentname strong{flex:1;text-align:right;line-height:1.3}
+.group-panel .studentname .avatar{width:24px;height:24px;margin-top:0}
+.group-panel .status-btn{min-height:36px;padding:4px 6px}
+.group-panel .submitbar{padding:12px 14px;gap:8px}
+@media(max-width:600px){.group-panel .checkrow{flex-direction:column;align-items:stretch;gap:4px;padding:6px 12px}.group-panel .status-btn{min-height:34px}.group-panel .status-buttons{gap:5px}.group-panel .submitbar .btn{min-height:40px}}

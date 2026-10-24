@@ -14,6 +14,8 @@ Die Anwesenheitstabelle wird von rechts nach links gelesen: Nummer (je Klasse ab
 
 Über einen Klick auf das Datum lässt sich der Termin verwalten. **Termin löschen** entfernt nach Bestätigung den Termin und sämtliche zugehörigen Anwesenheits- und Klassenmeldungen atomar; die übrigen Termine, Klassen und Schüler bleiben erhalten. **Tag zurücksetzen** behält weiterhin den Termin bei.
 
+In der kompakten Klassenansicht sind Namen rechtsbündig. Für noch nicht erfasste Schüler ist im Formular „abwesend“ vorausgewählt; vorhandene gespeicherte Status bleiben erhalten. Erst **Anwesenheit senden** speichert die Meldung. Der Sammelbutton „Alle anwesend“ entfällt. Namen in der Tabelle, Klassenkachel und Meldungsansicht verwenden bevorzugt Calibri (mit System-Ersatzschrift, falls die Schrift auf dem Gerät fehlt).
+
 ## Kompakte Verwaltung
 
 Die Kursauswahl und die Aktionen der jeweiligen Ansicht stehen in einer gemeinsamen Werkzeugzeile. Die Anwesenheitsliste zeigt Meldungen ohne bearbeitbare Auswahlfelder: grün für anwesend, rot für abwesend und blau für entschuldigt. Klassenüberschriften, Schülerzahlen und „Hinzufügen“ bleiben beim horizontalen Scrollen sichtbar.
