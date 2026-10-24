@@ -137,3 +137,12 @@
 .group-panel .status-btn{min-height:36px;padding:4px 6px}
 .group-panel .submitbar{padding:12px 14px;gap:8px}
 @media(max-width:600px){.group-panel .checkrow{flex-direction:column;align-items:stretch;gap:4px;padding:6px 12px}.group-panel .status-btn{min-height:34px}.group-panel .status-buttons{gap:5px}.group-panel .submitbar .btn{min-height:40px}}
+
+/* Overview, table bands and link cards without redundant rows. */
+.overview-selection{display:flex;align-items:center;gap:10px;margin-left:auto;max-width:100%}.datecard .overview-selection .pill{margin:0}.overview-date{min-width:0}
+.matrix.consolidated .group-divider .class-heading-cell{position:static;inset:auto;min-width:0;width:auto;max-width:none;padding:7px 0;border-left:4px solid var(--group-edge);border-right:0;z-index:auto;text-align:left}
+.matrix.consolidated .group-divider .group-heading{position:sticky;left:0;right:auto;width:max-content;max-width:calc(100vw - 48px);margin-left:0;margin-right:auto;padding:0 10px;direction:ltr;text-align:left}
+.groupcard-top{gap:10px;margin-bottom:12px}.groupcard-top h2{flex:1;min-width:0;overflow-wrap:anywhere}.groupcard-top .pill{margin-left:auto}
+.class-roles{display:grid;gap:7px;margin-bottom:16px}.class-roles>div{display:flex;align-items:baseline;gap:10px}.class-roles small{flex-shrink:0;color:#6d7f73}.groupcard .class-roles p{flex:1;min-width:0;display:block;text-align:right;margin:0;overflow-wrap:anywhere}
+.group-mode .content{padding-top:10px}.group-mode .group-panel{max-width:900px}
+@media(max-width:400px){.overview-selection{gap:6px}.overview-date{padding-left:7px;padding-right:7px}.groupcard-top{flex-wrap:wrap}.groupcard-top .pill{margin-left:0}}

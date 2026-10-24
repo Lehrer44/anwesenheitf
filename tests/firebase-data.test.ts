@@ -70,3 +70,11 @@ assert.throws(()=>mutate(removal,{action:'deleteGroup',id:'missing'}),/Klasse ni
 mutate(removal,{action:'deleteGroup',id:keptClass.id});assert.equal(removal.groups.length,0);
 mutate(removal,{action:'group',name:'Neue Klasse',leader:''});assert.equal(removal.groups.length,1);
 console.log('Class deletion checks passed: pupils and historical attendance preserved; links removed; group submissions cannot delete classes.');
+
+const helperState=initial(1);mutate(helperState,{action:'addStudents',names:'Leader\nHelper',group:helperState.groups[0].id});
+mutate(helperState,{action:'group',id:helperState.groups[0].id,name:'Roles',leaderId:helperState.students[0].id,helperId:helperState.students[1].id});
+const helperDocs=await documentsFor(helperState,'role-course','owner',0),helperHash=await tokenHash(helperState.groups[0].token!);
+assert.equal(helperDocs.get('courses/role-course/private/config').groups[0].helperId,helperState.students[1].id);
+assert.equal(helperDocs.get('channels/'+helperHash).group.helperId,undefined);
+assert.equal(helperDocs.get('channels/'+helperHash).group.token,undefined);
+console.log('Role document checks passed: helper selection persisted privately; public channel schema remains compatible.');

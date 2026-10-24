@@ -4,13 +4,13 @@ Einfache Anwesenheitsverwaltung: Klassenleitung öffnet einen geheimen Klassenli
 
 React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Beim Anlegen wählt die Kursleitung die Klassenanzahl selbst (0 bis 30); es gibt keine voreingestellte Anzahl. Weitere Klassen lassen sich später über „Neue Klasse“ hinzufügen und über das Papierkorbsymbol nach Bestätigung entfernen. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Gezielt freigeschaltete Administratoren können sämtliche Kurse gemeinsam verwalten. Eine normale Registrierung vergibt keine Administratorrechte.
 
-Den Namen eines bestehenden Kurses änderst du über **Kursname ändern** direkt neben der Kursauswahl. Der aktuelle Name ist vorausgefüllt. Nach **Speichern** erscheint der neue Name auch in den Klassenansichten. Schüler, Termine, Anwesenheiten und bestehende Klassenlinks bleiben erhalten. Kursnamen dürfen nach dem Entfernen äußerer Leerzeichen 1 bis 100 Zeichen lang sein.
+Den Namen einer bestehenden Liste änderst du auf der Übersicht über **Listenname ändern** direkt neben der Listenauswahl. Der aktuelle Name ist vorausgefüllt. Nach **Speichern** erscheint der neue Name auch in den Klassenansichten. Schüler, Termine, Anwesenheiten und bestehende Klassenlinks bleiben erhalten. Kursnamen dürfen nach dem Entfernen äußerer Leerzeichen 1 bis 100 Zeichen lang sein.
 
 ## Navigation und Anwesenheitsliste
 
-Die Seitenleiste ist auf allen Bildschirmgrößen zunächst ausgeblendet und lässt sich über das Menü oben links öffnen. Ein Klick außerhalb, Escape oder die Wahl einer Ansicht schließt sie wieder.
+Die Seitenleiste der Verwaltung ist auf allen Bildschirmgrößen zunächst ausgeblendet und lässt sich über das Menü oben links öffnen. Ein Klick außerhalb, Escape oder die Wahl einer Ansicht schließt sie wieder.
 
-Die Anwesenheitstabelle wird von rechts nach links gelesen: Nummer (je Klasse ab 1), rechtsbündiger Schülername, Verwaltung und anschließend Termine vom frühesten rechts bis zum spätesten links. Nummern und Namen sowie die Klassenüberschrift bleiben beim horizontalen Scrollen am rechten Rand sichtbar. Neue spätere Termine erscheinen links.
+Die Anwesenheitstabelle wird von rechts nach links gelesen: Nummer (je Klasse ab 1), rechtsbündiger Schülername, Verwaltung und anschließend Termine vom frühesten rechts bis zum spätesten links. Nummern und Namen bleiben beim horizontalen Scrollen am rechten Rand sichtbar; die Beschriftung der durchgehenden Klassenkopfzeile bleibt links sichtbar. Neue spätere Termine erscheinen links.
 
 Über einen Klick auf das Datum lässt sich der Termin verwalten. **Termin löschen** entfernt nach Bestätigung den Termin und sämtliche zugehörigen Anwesenheits- und Klassenmeldungen atomar; die übrigen Termine, Klassen und Schüler bleiben erhalten. **Tag zurücksetzen** behält weiterhin den Termin bei.
 
@@ -20,7 +20,7 @@ In der kompakten Klassenansicht sind Namen rechtsbündig. Für noch nicht erfass
 
 Die Kursauswahl und die Aktionen der jeweiligen Ansicht stehen in einer gemeinsamen Werkzeugzeile. Die Anwesenheitsliste zeigt Meldungen ohne bearbeitbare Auswahlfelder: grün für anwesend, rot für abwesend und blau für entschuldigt. Klassenüberschriften, Schülerzahlen und „Hinzufügen“ bleiben beim horizontalen Scrollen sichtbar.
 
-Unter **Klassen & Links** wird eine Klasse über **Neue Klasse** angelegt und über das Papierkorbsymbol neben **Bearbeiten** entfernt. Der Dialog erklärt die Folgen: Schüler bleiben unter „Ohne Klasse“ im Kurs, historische Termine und Anwesenheiten bleiben erhalten. Heutige und zukünftige Zuteilungen werden aufgehoben; der alte Klassenlink und seine Meldemöglichkeit werden entfernt. Die Löschung erfolgt atomar über die bestehende Firebase-Transaktion. Interne Datenfelder und URL-Parameter behalten ihre bisherigen Namen, damit bestehende Klassenlinks funktionieren.
+Unter **Links** wird eine Klasse über **Neue Klasse** angelegt und über das Papierkorbsymbol neben **Bearbeiten** entfernt. Der Dialog erklärt die Folgen: Schüler bleiben unter „Ohne Klasse“ im Kurs, historische Termine und Anwesenheiten bleiben erhalten. Heutige und zukünftige Zuteilungen werden aufgehoben; der alte Klassenlink und seine Meldemöglichkeit werden entfernt. Die Löschung erfolgt atomar über die bestehende Firebase-Transaktion. Interne Datenfelder und URL-Parameter behalten ihre bisherigen Namen, damit bestehende Klassenlinks funktionieren.
 
 ## Stand und Freischaltung
 
@@ -113,3 +113,12 @@ GitHub Actions führt Modelltests, Regeltests und Build auch für Pull Requests 
 Der vorhandene Kurs wurde vollständig nach Firebase übernommen und dort geprüft. Die Anwendung benötigt weder eine Supabase-Verbindung noch Zugangsdaten des früheren Backends. Das einmalige Importwerkzeug und die alten Supabase-Dateien wurden nach der erfolgreichen Umschaltung entfernt. Frühere Quellstände bleiben über die Git-Versionsgeschichte nachvollziehbar.
 
 Die Firebase-Klassenlinks unterscheiden sich von den früheren Links. Nur Links aus der aktuellen App verwenden. Das Entfernen der Repository-Dateien löscht kein externes Supabase-Projekt und keine dort gespeicherten Daten.
+
+
+## Listen, Links und Rollen
+
+Die Navigation heißt **Übersicht**, **Tabelle** und **Links**. Listenname und neue Liste werden auf der Übersicht verwaltet. Der Datumwähler steht neben dem Meldungsstatus; Tabellenlegende und zusätzliche Fußtexte entfallen. Klassenkopfzeilen erstrecken sich über die komplette Tabellenbreite und halten ihre linksbündige Beschriftung am sichtbaren linken Rand. Nicht gemeldete Statuszellen enthalten keinen Text.
+
+Unter **Links → Bearbeiten** werden Name, Verantwortlicher und Helfer festgelegt. Beide Rollen verwenden vorhandene Schüler; pro Klasse sind unterschiedliche Personen vorgesehen. Die gewählten Personen bleiben dieser Klasse zugeordnet. Namen werden anhand ihrer Schüler-ID angezeigt, sodass Umbenennen, doppelte Namen und Entfernen eines Schülers korrekt verarbeitet werden. Die Helfer-ID liegt ausschließlich in der privaten Konfiguration. Das Datenformat der bestehenden Klassenlinks und die veröffentlichten Firestore-Regeln bleiben kompatibel.
+
+Die Klassenansicht enthält weder Seitenleiste noch globale Kopfzeile oder die Überschrift „Anwesenheit melden“. Auch während des Ladens wird bei einem Klassenlink keine Administration eingeblendet. Die serverseitige Begrenzung auf die eigene Klassenmeldung bleibt bestehen.

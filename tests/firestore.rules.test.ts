@@ -265,3 +265,27 @@ test('deleting a lesson removes all copies and blocks stale class submissions',a
  await ownerAction(ownerDb,'owner',{action:'session',date:deleted},id);
  const recreated=await ownerRead(ownerDb,id);assert.deepEqual(recreated.state.sessions[0].marks,{});assert.deepEqual(recreated.state.sessions[0].reports,{});
 });
+
+
+test('existing rules persist private helper choices without exposing writable roles through class links',async()=>{
+ const id='class-role-course',state=initial(2),past='2000-04-01',future='2099-04-01';
+ mutate(state,{action:'addStudents',names:'Responsible\nHelper',group:state.groups[0].id});
+ for(const date of [past,future])mutate(state,{action:'session',date});
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+ const [responsible,helper]=state.students,target=state.groups[1],hash=await tokenHash(target.token!);
+ const before=await ownerRead(ownerDb,id);
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'group',id:target.id,name:'Role class',leaderId:responsible.id,helperId:helper.id},id));
+ const after=await ownerRead(ownerDb,id),group=after.state.groups.find(g=>g.id===target.id)!;
+ assert.equal(group.helperId,helper.id);assert.equal(group.leaderId,responsible.id);assert.equal(after.state.students.length,2);
+ assert.deepEqual(after.state.sessions.find(d=>d.date===past),before.state.sessions.find(d=>d.date===past));
+ assert.ok(after.state.sessions.find(d=>d.date===future)!.roster.every(p=>p.group===target.id));
+ assert.equal((await getDoc(doc(groupDb,'channels',hash))).data()!.group.helperId,undefined);
+ await assertFails(getDoc(doc(groupDb,'courses',id,'private','config')));
+ await assertFails(updateDoc(doc(groupDb,'channels',hash),{'group.helperId':helper.id}));
+ await assertFails(ownerAction(otherDb,'other-owner',{action:'group',id:target.id,name:'Hijack',leaderId:helper.id,helperId:responsible.id},id));
+ await assert.rejects(ownerAction(ownerDb,'owner',{action:'group',id:target.id,name:'Invalid',leaderId:responsible.id,helperId:responsible.id},id),/verschiedene Schüler/);
+ await ownerAction(ownerDb,'owner',{action:'renameStudent',id:helper.id,name:'Renamed helper'},id);
+ assert.equal((await ownerRead(ownerDb,id)).state.students.find(p=>p.id===helper.id)!.name,'Renamed helper');
+ await ownerAction(ownerDb,'owner',{action:'deleteStudent',id:helper.id},id);
+ assert.equal((await ownerRead(ownerDb,id)).state.groups.find(g=>g.id===target.id)!.helperId,undefined);
+});
