@@ -26,3 +26,20 @@ mutate(s,{action:'resetSession',date:resetDate});assert.deepEqual(reset.marks,{}
 mutate(s,{action:'cancel',date:resetDate,reason:'  Eigener Grund  '});assert.equal(reset.cancelled,'Eigener Grund');assert.throws(()=>mutate(s,{action:'cancel',date:resetDate,reason:'   '}));
 console.log('Day reset checks passed: admin only, clears marks/reports/reason, retains lesson and roster, leaves other dates unchanged.');
 
+
+// A deleted date is removed from owner/group views and can be recreated empty.
+const deletion=initial(2),classA=deletion.groups[0];
+mutate(deletion,{action:'addStudents',names:'أحمد\nمحمد',group:classA.id});
+for(const date of ['2026-01-01','2026-01-08','2026-01-15'])mutate(deletion,{action:'session',date});
+mutate(deletion,{action:'submit',date:'2026-01-08',marks:Object.fromEntries(deletion.students.map(p=>[p.id,'anwesend']))},classA);
+mutate(deletion,{action:'cancel',date:'2026-01-08',reason:'Ausfall'});
+const retained=structuredClone(deletion.sessions.filter(d=>d.date!=='2026-01-08')),pupilsBefore=structuredClone(deletion.students),classesBefore=structuredClone(deletion.groups);
+assert.throws(()=>mutate(deletion,{action:'deleteSession',date:'2026-01-08'},classA));
+mutate(deletion,{action:'deleteSession',date:'2026-01-08'});
+assert.deepEqual(deletion.sessions,retained);assert.deepEqual(deletion.students,pupilsBefore);assert.deepEqual(deletion.groups,classesBefore);
+assert.ok(!groupView(deletion,classA).sessions.some(d=>d.date==='2026-01-08'));
+assert.throws(()=>mutate(deletion,{action:'deleteSession',date:'missing'}),/Termin nicht gefunden/);
+mutate(deletion,{action:'session',date:'2026-01-08'});assert.deepEqual(deletion.sessions.map(d=>d.date),['2026-01-01','2026-01-08','2026-01-15']);
+assert.deepEqual(deletion.sessions[1].marks,{});assert.deepEqual(deletion.sessions[1].reports,{});assert.equal(deletion.sessions[1].cancelled,'');
+for(const date of deletion.sessions.map(d=>d.date))mutate(deletion,{action:'deleteSession',date});assert.equal(deletion.sessions.length,0);
+console.log('Lesson deletion checks passed: owner only, other dates/pupils/classes preserved, group date removed, recreation starts empty.');

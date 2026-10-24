@@ -101,3 +101,23 @@
 
 .course-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-left:auto}
 @media(max-width:760px){.course-actions{gap:6px}}
+
+/* Collapsible navigation on all screen sizes. */
+.sidebar{display:none;top:44px;bottom:0;width:248px;padding:22px;box-shadow:10px 0 50px #274c3033;overflow-y:auto;z-index:30}
+.sidebar.visible{display:flex}.sidebar .profile{margin-top:auto}
+.sidebar-backdrop{position:fixed;inset:44px 0 0;background:#243d324d;z-index:25;border:0;padding:0}
+.main{margin-left:0}.mobile-button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;flex-shrink:0}
+.topbar{gap:12px;position:sticky;top:0;z-index:35;background:#fff}.breadcrumb{flex:1}
+/* DOM order follows RTL: number, pupil, management, ascending dates. */
+.matrix.consolidated{table-layout:fixed;--number-width:44px;--student-width:220px;--management-width:104px}
+.matrix.consolidated :is(th,td).number-column{position:sticky;left:auto;right:0;min-width:var(--number-width);width:var(--number-width);max-width:var(--number-width);text-align:center;direction:ltr;background:#fff;border-left:0;border-right:0;z-index:3}
+.matrix.consolidated .student-column{position:sticky;left:auto;right:var(--number-width);min-width:var(--student-width);width:var(--student-width);max-width:var(--student-width);text-align:right;background:#fff;border-left:1px solid #d5e1d9;z-index:3}
+.matrix.consolidated thead .number-column,.matrix.consolidated thead .student-column{z-index:5;background:#f8faf7}
+.matrix.consolidated .student-column .matrix-name{text-align:right}
+.matrix.consolidated .student-band .number-column{border-left:0;border-right:4px solid var(--group-edge);background:color-mix(in srgb,var(--group-color) 35%,white)}
+.matrix.consolidated .student-band .student-column{background:color-mix(in srgb,var(--group-color) 35%,white)}
+.matrix.consolidated .management-column,.matrix.consolidated .attendance-cell,.matrix.consolidated thead th:not(.number-column):not(.student-column){direction:ltr}
+.matrix.consolidated .group-divider .class-heading-cell{left:auto;right:0;min-width:calc(var(--number-width) + var(--student-width) + var(--management-width));width:calc(var(--number-width) + var(--student-width) + var(--management-width));max-width:calc(var(--number-width) + var(--student-width) + var(--management-width));text-align:left;border-left:1px solid var(--group-edge);border-right:4px solid var(--group-edge);z-index:4}
+.matrix.consolidated .name-search .search{direction:ltr}.matrix.consolidated .name-search .search input{text-align:right}
+.modal button+.btn.danger{margin-inline-start:8px}
+@media(max-width:760px){.sidebar{top:48px;width:240px}.sidebar-backdrop{top:48px}.matrix.consolidated{--number-width:34px;--student-width:150px;--management-width:92px}.matrix.consolidated .management-column{min-width:var(--management-width);width:var(--management-width);padding:4px 3px}}

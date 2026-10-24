@@ -6,6 +6,14 @@ React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und 
 
 Den Namen eines bestehenden Kurses änderst du über **Kursname ändern** direkt neben der Kursauswahl. Der aktuelle Name ist vorausgefüllt. Nach **Speichern** erscheint der neue Name auch in den Klassenansichten. Schüler, Termine, Anwesenheiten und bestehende Klassenlinks bleiben erhalten. Kursnamen dürfen nach dem Entfernen äußerer Leerzeichen 1 bis 100 Zeichen lang sein.
 
+## Navigation und Anwesenheitsliste
+
+Die Seitenleiste ist auf allen Bildschirmgrößen zunächst ausgeblendet und lässt sich über das Menü oben links öffnen. Ein Klick außerhalb, Escape oder die Wahl einer Ansicht schließt sie wieder.
+
+Die Anwesenheitstabelle wird von rechts nach links gelesen: Nummer (je Klasse ab 1), rechtsbündiger Schülername, Verwaltung und anschließend Termine vom frühesten rechts bis zum spätesten links. Nummern und Namen sowie die Klassenüberschrift bleiben beim horizontalen Scrollen am rechten Rand sichtbar. Neue spätere Termine erscheinen links.
+
+Über einen Klick auf das Datum lässt sich der Termin verwalten. **Termin löschen** entfernt nach Bestätigung den Termin und sämtliche zugehörigen Anwesenheits- und Klassenmeldungen atomar; die übrigen Termine, Klassen und Schüler bleiben erhalten. **Tag zurücksetzen** behält weiterhin den Termin bei.
+
 ## Kompakte Verwaltung
 
 Die Kursauswahl und die Aktionen der jeweiligen Ansicht stehen in einer gemeinsamen Werkzeugzeile. Die Anwesenheitsliste zeigt Meldungen ohne bearbeitbare Auswahlfelder: grün für anwesend, rot für abwesend und blau für entschuldigt. Klassenüberschriften, Schülerzahlen und „Hinzufügen“ bleiben beim horizontalen Scrollen sichtbar.

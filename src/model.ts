@@ -113,6 +113,7 @@ export function mutate(s:State,b:any,group?:Group):void {
   s.sessions.push({date:b.date,cancelled:'',roster,marks:{},reports:{}});s.sessions.sort((a,b)=>a.date.localeCompare(b.date));break;}
  case 'cancel':{const d=find();const reason=String(b.reason||'').trim().slice(0,200);if(!reason)throw Error('Bitte einen Ausfallgrund wählen.');d.cancelled=reason;break;}
  case 'restore':find().cancelled='';break;
+ case 'deleteSession':{find();s.sessions=s.sessions.filter(d=>d.date!==b.date);break;}
  case 'resetSession':{const d=find();d.marks={};d.reports={};d.cancelled='';break;}
  case 'mark':{const d=find();if(d.cancelled)throw Error('Unterricht fällt aus.');const p=d.roster.find(p=>p.id===b.id);if(!p||!['','anwesend','abwesend','entschuldigt'].includes(b.status))throw Error('Ungültiger Status.');if(b.status===''){delete d.marks[b.id];delete d.reports[p.group];}else d.marks[b.id]=b.status;break;}
  default:throw Error('Unbekannte Aktion.');
