@@ -88,7 +88,7 @@
 .matrix.consolidated .cancel-cell{margin:auto;text-align:center}
 .matrix.consolidated .group-divider .class-heading-cell{position:sticky;left:0;z-index:2;min-width:324px;width:324px;max-width:324px;background:var(--group-color);padding:7px 9px;border-left:4px solid var(--group-edge);border-right:1px solid var(--group-edge)}
 .matrix.consolidated .group-heading{position:static;display:flex;flex-wrap:wrap;gap:5px 10px;width:auto;max-width:none;white-space:normal}
-.group-heading>strong{flex-basis:100%;font-size:13px}.group-heading>span{margin:0;font-size:12px}.group-heading>.textbutton{font-size:12px}
+.group-heading>strong{flex:0 1 auto;max-width:100%;overflow-wrap:anywhere;font-size:13px}.group-heading>span{margin:0;font-size:12px}.group-heading>.textbutton{font-size:12px}
 .matrix.consolidated .group-divider .class-band-fill{position:static;border-left:0;padding:0;background:var(--group-color)}
 .matrix.consolidated .name-search .search{min-height:34px}
 .groups-grid{gap:14px}.groupcard{padding:17px}.groupcard-top{margin-bottom:15px}

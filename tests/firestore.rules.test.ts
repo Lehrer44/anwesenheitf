@@ -213,7 +213,7 @@ test('deleting a class preserves pupils and historical reports and revokes the o
  for(const date of ['2000-01-01','2099-01-01'])mutate(state,{action:'session',date});
  const hash=await tokenHash(removed.token!),keptHash=await tokenHash(kept.token!),pupil=state.students[1].id;
  const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
- await updateDoc(doc(groupDb,'channels',hash,'lessons','2000-01-01'),{marks:{[pupil]:'entschuldigt'},reportedAt:serverTimestamp()});
+ await updateDoc(doc(groupDb,'channels',hash,'lessons','2000-01-01'),{marks:{[state.students[0].id]:'anwesend',[pupil]:'entschuldigt'},reportedAt:serverTimestamp()});
  const before=await ownerRead(ownerDb,id);
  await assertFails(ownerAction(otherDb,'other-owner',{action:'deleteGroup',id:removed.id},id));
  await assertFails(ownerAction(groupDb,'group-device',{action:'deleteGroup',id:removed.id},id));
