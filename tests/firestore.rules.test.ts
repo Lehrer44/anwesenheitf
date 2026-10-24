@@ -237,3 +237,31 @@ test('deleting a class preserves pupils and historical reports and revokes the o
  });
  await assert.rejects(ownerAction(ownerDb,'owner',{action:'deleteGroup',id:removed.id},id),/Klasse nicht gefunden/);
 });
+
+
+test('deleting a lesson removes all copies and blocks stale class submissions',async()=>{
+ const id='delete-lesson-course',state=initial(2),deleted='2000-02-01',retained='2000-02-08';
+ for(const [i,g] of state.groups.entries())mutate(state,{action:'addStudents',names:'Pupil '+i,group:g.id});
+ for(const date of [deleted,retained])mutate(state,{action:'session',date});
+ const hashes=await Promise.all(state.groups.map(g=>tokenHash(g.token!)));
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+ for(const [i,hash] of hashes.entries())await updateDoc(doc(groupDb,'channels',hash,'lessons',deleted),{marks:{[state.students[i].id]:'entschuldigt'},reportedAt:serverTimestamp()});
+ await assertFails(ownerAction(otherDb,'other-owner',{action:'deleteSession',date:deleted},id));
+ await assertFails(ownerAction(groupDb,'group-device',{action:'deleteSession',date:deleted},id));
+ const before=await ownerRead(ownerDb,id);
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'deleteSession',date:deleted},id));
+ const after=await ownerRead(ownerDb,id);
+ assert.deepEqual(after.meta.dates,[retained]);assert.deepEqual(after.state.sessions,before.state.sessions.filter(d=>d.date!==deleted));
+ assert.deepEqual(after.state.students,before.state.students);assert.deepEqual(after.state.groups,before.state.groups);
+ assert.equal((await getDoc(doc(ownerDb,'courses',id,'sessions',deleted))).exists(),false);
+ for(const [i,hash] of hashes.entries()){
+  assert.equal((await getDoc(doc(ownerDb,'channels',hash,'lessons',deleted))).exists(),false);
+  assert.equal((await getDocs(collection(groupDb,'channels',hash,'lessons'))).size,1);
+  await assertFails(updateDoc(doc(groupDb,'channels',hash,'lessons',deleted),{marks:{[state.students[i].id]:'anwesend'},reportedAt:serverTimestamp()}));
+ }
+ const admin=env.authenticatedContext('lesson-admin',{email_verified:true,administrator:true,firebase:{sign_in_provider:'password'}}).firestore() as unknown as Firestore;
+ await assertSucceeds(ownerAction(admin,'lesson-admin',{action:'deleteSession',date:retained},id));
+ assert.deepEqual((await ownerRead(ownerDb,id)).state.sessions,[]);
+ await ownerAction(ownerDb,'owner',{action:'session',date:deleted},id);
+ const recreated=await ownerRead(ownerDb,id);assert.deepEqual(recreated.state.sessions[0].marks,{});assert.deepEqual(recreated.state.sessions[0].reports,{});
+});
