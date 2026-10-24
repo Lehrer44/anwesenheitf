@@ -12,14 +12,14 @@ const today=()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Europe/Berlin'}
 type Data={course:string,role:string,state:State,version:number};
 export default function Home(){
  const [data,setData]=useState<Data|null>(null),[err,setErr]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false),[tab,setTab]=useState('overview'),[date,setDate]=useState(''),[search,setSearch]=useState(''),[modal,setModal]=useState(''),[names,setNames]=useState(''),[newDate,setNewDate]=useState(today),[from,setFrom]=useState(''),[to,setTo]=useState(''),[absentText,setAbsentText]=useState('abwesend'),[excusedText,setExcusedText]=useState('entschuldigt'),[reason,setReason]=useState(''),[gname,setGname]=useState(''),[leader,setLeader]=useState(''),[leaderId,setLeaderId]=useState(''),[addGroup,setAddGroup]=useState(''),[editId,setEditId]=useState(''),[draft,setDraft]=useState<Record<string,Status>>({}),[dirty,setDirty]=useState(false),[mobile,setMobile]=useState(false);
- const access=useRef({course:'',token:''}),dirtyRef=useRef(false),busyRef=useRef(false);dirtyRef.current=dirty;busyRef.current=busy;
+ const access=useRef({course:'',token:''}),dirtyRef=useRef(false),busyRef=useRef(false),dateRef=useRef(date);dirtyRef.current=dirty;busyRef.current=busy;dateRef.current=date;
  const [boot,setBoot]=useState(true),[courses,setCourses]=useState<CourseChoice[]>([]);
  const [courseSetup,setCourseSetup]=useState<''|'create'>('');
  const menuButton=useRef<HTMLButtonElement>(null);
  function closeMenu(){setMobile(false);menuButton.current?.focus();}
  useEffect(()=>{if(!mobile)return;document.querySelector<HTMLButtonElement>('#main-navigation nav button')?.focus();const escape=(e:KeyboardEvent)=>{if(e.key==='Escape')closeMenu();};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[mobile]);
  const stopWatch=useRef<()=>void>(()=>{}),loadGeneration=useRef(0);
- function accept(d:Data){setData(d);setCourses(old=>old.map(c=>c.id===d.course?{...c,title:d.state.title}:c));setDate(old=>d.state.sessions.some(x=>x.date===old)?old:nextSession(d.state));}
+ function accept(d:Data){if(d.role==='group'&&dateRef.current&&!d.state.sessions.some(x=>x.date===dateRef.current)){setDraft({});setDirty(false);if(dirtyRef.current)setNotice('Der ausgewählte Termin ist nicht mehr verfügbar. Die ungesendete Meldung wurde verworfen.');}setData(d);setCourses(old=>old.map(c=>c.id===d.course?{...c,title:d.state.title}:c));setDate(old=>d.state.sessions.some(x=>x.date===old)?old:nextSession(d.state));}
  async function request(body?:any){return await courseRequest(body,access.current) as Data;}
  async function refresh(){
   const generation=++loadGeneration.current;stopWatch.current();
