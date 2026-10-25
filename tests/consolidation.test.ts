@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {writeFileSync} from 'node:fs';
-import {initial,mutate,syncFutureSessions,nextSession,groupView,groupedStudents,attendanceDraft} from '../src/model.ts';
+import {initial,mutate,syncFutureSessions,nextSession,groupView,groupedStudents,attendanceDraft,classSessionChoices,classSessionDate,courseToday} from '../src/model.ts';
 import {makeXlsx} from '../src/export.ts';
 const s=initial(7),g=s.groups[0];
 mutate(s,{action:'addStudents',names:'Leiter\nAnna\nBen',group:g.id});
@@ -55,3 +55,28 @@ mutate(formState,{action:'submit',date:lesson.date,marks:attendanceDraft(lesson)
 mutate(formState,{action:'resetSession',date:lesson.date});assert.deepEqual(Object.values(attendanceDraft(lesson)),['abwesend','abwesend','abwesend']);
 lesson.cancelled='Ausfall';assert.deepEqual(attendanceDraft(lesson),{});assert.deepEqual(attendanceDraft(),{});
 console.log('Class draft checks passed: absent defaults, existing statuses preserved, no stale pupils, no implicit save, explicit submission, reset and cancelled lessons.');
+
+// Class reporting uses the most recent date, never tomorrow's default, in Berlin time.
+const calendar=initial();calendar.sessions=['2026-11-08','2026-10-11','2026-11-01','2026-10-25','2026-10-18'].map(date=>({date,cancelled:'',roster:[],marks:{},reports:{}}));
+const calendarBefore=structuredClone(calendar);
+assert.deepEqual(classSessionChoices(calendar,'2026-10-24').map(d=>d.date),['2026-10-11','2026-10-18','2026-10-25']);
+assert.equal(classSessionDate(calendar,'','2026-10-24'),'2026-10-18');
+assert.deepEqual(classSessionChoices(calendar,'2026-10-25').map(d=>d.date),['2026-10-18','2026-10-25','2026-11-01']);
+assert.equal(classSessionDate(calendar,'','2026-10-25'),'2026-10-25');
+assert.equal(classSessionDate(calendar,'','2026-10-26'),'2026-10-25');
+assert.equal(classSessionDate(calendar,'2026-10-18','2026-10-25',true),'2026-10-18');
+assert.equal(classSessionDate(calendar,'2026-11-01','2026-10-25',true),'2026-11-01');
+assert.equal(classSessionDate(calendar,'2026-10-11','2026-10-25',true),'2026-10-25');
+assert.equal(classSessionDate(calendar,'2026-10-18','2026-10-25',false),'2026-10-25');
+assert.deepEqual(calendar,calendarBefore);
+assert.equal(courseToday(new Date('2026-10-24T21:59:59Z')),'2026-10-24');assert.equal(courseToday(new Date('2026-10-24T22:00:00Z')),'2026-10-25');
+assert.equal(courseToday(new Date('2026-10-25T22:59:59Z')),'2026-10-25');assert.equal(courseToday(new Date('2026-10-25T23:00:00Z')),'2026-10-26');
+assert.equal(classSessionDate(calendar,'',courseToday(new Date('2026-10-24T21:59:59Z'))),'2026-10-18');
+assert.equal(classSessionDate(calendar,'',courseToday(new Date('2026-10-24T22:00:00Z'))),'2026-10-25');
+assert.equal(classSessionDate(calendar,'','2026-10-01'),'');assert.deepEqual(classSessionChoices(calendar,'2026-10-01').map(d=>d.date),['2026-10-11']);
+assert.deepEqual(classSessionChoices(initial(),'2026-10-25'),[]);assert.equal(classSessionDate(initial()),'');
+assert.deepEqual(classSessionChoices(calendar,'2026-12-01').map(d=>d.date),['2026-11-01','2026-11-08']);
+const withoutSelected=structuredClone(calendar);withoutSelected.sessions=withoutSelected.sessions.filter(d=>d.date!=='2026-10-25');
+assert.equal(classSessionDate(withoutSelected,'2026-10-25','2026-10-26',true),'2026-10-18');
+assert.equal(nextSession(calendar,'2026-10-26'),'2026-11-01');
+console.log('Class calendar checks passed: two recent dates plus one upcoming, latest started date by default, explicit selection, empty/future-only calendars, Berlin midnight/DST, deleted dates and unchanged admin selection.');

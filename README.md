@@ -122,3 +122,12 @@ Die Navigation heißt **Übersicht**, **Tabelle** und **Links**. Listenname und 
 Unter **Links → Bearbeiten** werden Name, Verantwortlicher und Helfer festgelegt. Beide Rollen verwenden vorhandene Schüler; pro Klasse sind unterschiedliche Personen vorgesehen. Die gewählten Personen bleiben dieser Klasse zugeordnet. Namen werden anhand ihrer Schüler-ID angezeigt, sodass Umbenennen, doppelte Namen und Entfernen eines Schülers korrekt verarbeitet werden. Die Helfer-ID liegt ausschließlich in der privaten Konfiguration. Das Datenformat der bestehenden Klassenlinks und die veröffentlichten Firestore-Regeln bleiben kompatibel.
 
 Die Klassenansicht enthält weder Seitenleiste noch globale Kopfzeile oder die Überschrift „Anwesenheit melden“. Auch während des Ladens wird bei einem Klassenlink keine Administration eingeblendet. Die serverseitige Begrenzung auf die eigene Klassenmeldung bleibt bestehen.
+
+
+## Terminwahl in der Klassenansicht
+
+Die Auswahl zeigt höchstens die letzten zwei bereits begonnenen Termine (einschließlich heute) und den nächsten zukünftigen Termin. Standardmäßig bleibt der zuletzt begonnene Termin gewählt, auch am Folgetag. Erst mit Beginn des Termintags in **Europe/Berlin** wird dieser Termin zur automatischen Vorauswahl. Ohne vergangenen/heutigen Termin bleibt die Auswahl zunächst leer; ein zukünftiger Termin kann ausdrücklich gewählt werden. Die Verwaltung behält ihre bisherige Terminwahl.
+
+Eine bewusst gewählte Auswahl und ungesendete Angaben werden bei Aktualisierungen nicht überschrieben, solange der Termin im verfügbaren Zeitfenster bleibt. Wird ein Termin gelöscht oder fällt er aus diesem Fenster, wird ein alter Entwurf verworfen und ein Hinweis angezeigt. Das Kalenderdatum wird bei Fokuswechsel und regelmäßig aktualisiert, damit auch eine geöffnete Ansicht einen Tageswechsel berücksichtigt.
+
+Datum und „Zuletzt gesendet“ stehen in einer gemeinsamen Zeile; Klassenname, Leitungsname und zusätzliche Fußhinweise entfallen. Auf dem Handy stehen Name und drei kompakte Statusbuttons in einer Zeile: Haken = anwesend, Kreuz = abwesend, Uhr = entschuldigt. Zugängliche Beschriftungen nennen weiterhin den vollständigen Status und den Schülernamen.

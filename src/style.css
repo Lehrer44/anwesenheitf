@@ -146,3 +146,21 @@
 .class-roles{display:grid;gap:7px;margin-bottom:16px}.class-roles>div{display:flex;align-items:baseline;gap:10px}.class-roles small{flex-shrink:0;color:#6d7f73}.groupcard .class-roles p{flex:1;min-width:0;display:block;text-align:right;margin:0;overflow-wrap:anywhere}
 .group-mode .content{padding-top:10px}.group-mode .group-panel{max-width:900px}
 @media(max-width:400px){.overview-selection{gap:6px}.overview-date{padding-left:7px;padding-right:7px}.groupcard-top{flex-wrap:wrap}.groupcard-top .pill{margin-left:0}}
+
+/* Date and report information share the first row; compact one-line phone controls. */
+.group-panel .group-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid #edf1ee}
+.group-panel .report-info{min-width:0}.group-panel .report-info small{line-height:1.4}
+.group-panel .group-tools select{flex-shrink:0;max-width:48%;font-size:14px;padding:7px;min-height:36px}
+.group-panel .status-symbol{display:none}.group-panel .submitbar>.btn{margin-left:auto}
+@media(max-width:760px){
+ .group-panel .checkrow{flex-direction:row-reverse;align-items:center;gap:8px;padding:6px 8px}
+ .group-panel .studentname{min-width:0;gap:0}.group-panel .studentname .avatar{display:none}
+ .group-panel .studentname strong{font-size:20px;line-height:1.3}
+ .group-panel .status-buttons{flex:0 0 auto;gap:4px}
+ .group-panel .status-btn{flex:0 0 42px;width:42px;min-width:42px;height:42px;min-height:42px;padding:0}
+ .group-panel .status-text{display:none}.group-panel .status-symbol{display:flex;align-items:center;justify-content:center}
+ .group-panel .status-btn.anwesend:not(.chosen){color:#17643b;border-color:#17643b}
+ .group-panel .status-btn.abwesend:not(.chosen){color:#ad242b;border-color:#ad242b}
+ .group-panel .status-btn.entschuldigt:not(.chosen){color:#185fa5;border-color:#185fa5}
+ .group-panel .group-tools{padding:8px;gap:6px}.group-panel .report-info{font-size:12px}.group-panel .report-info small{font-size:11px}
+}

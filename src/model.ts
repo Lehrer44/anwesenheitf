@@ -34,8 +34,17 @@ export function normalizeLeaders(s:State){
   chooseLeader(s,g,linked?.name||g.leader,matches[0]?.id);
  }
 }
-export const courseToday=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(new Date());
+export const courseToday=(now=new Date())=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(now);
 export function nextSession(s:State,today=courseToday()){const dates=s.sessions.map(d=>d.date).sort();return dates.find(d=>d>=today)||dates.at(-1)||'';}
+export function classSessionChoices(s:Pick<State,'sessions'>,today=courseToday()){
+ const sorted=[...s.sessions].sort((a,b)=>a.date.localeCompare(b.date));
+ return [...sorted.filter(d=>d.date<=today).slice(-2),...sorted.filter(d=>d.date>today).slice(0,1)];
+}
+export function classSessionDate(s:Pick<State,'sessions'>,current='',today=courseToday(),keepCurrent=false){
+ const choices=classSessionChoices(s,today);
+ if(keepCurrent&&choices.some(d=>d.date===current))return current;
+ return choices.filter(d=>d.date<=today).at(-1)?.date||'';
+}
 export function groupedStudents(s:State){return [...s.groups.map(g=>({id:g.id,name:displayClassName(g.name),students:s.students.filter(p=>p.group===g.id)})),{id:'',name:'Ohne Klasse',students:s.students.filter(p=>!s.groups.some(g=>g.id===p.group))}];}
 export function orderedRoster(s:State,roster:Student[]){const ranks=new Map(s.students.map((p,i)=>[p.id,i]));return [...roster].sort((a,b)=>(ranks.get(a.id)??Infinity)-(ranks.get(b.id)??Infinity));}
 // Keep today's and future lessons in step with enrollment. Past snapshots are immutable.
