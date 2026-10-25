@@ -8,9 +8,9 @@ Den Namen einer bestehenden Liste änderst du auf der Übersicht über **Listenn
 
 ## Navigation und Anwesenheitsliste
 
-Die Seitenleiste der Verwaltung ist auf allen Bildschirmgrößen zunächst ausgeblendet und lässt sich über das Menü oben links öffnen. Ein Klick außerhalb, Escape oder die Wahl einer Ansicht schließt sie wieder.
+Auf großen Bildschirmen (ab 761 Pixeln) bleibt die Seitennavigation als schmale Iconleiste sichtbar. Mauszeiger oder Tastaturfokus auf der Leiste zeigen die Beschriftungen; das Menü oben links klappt die Leiste dauerhaft auf und wieder zu. Auf kleinen Bildschirmen bleibt sie zunächst ausgeblendet. Ein Klick außerhalb, Escape oder die Wahl einer Ansicht schließt das geöffnete Menü. Abmelden steht neben dem Online-Status in der Kopfzeile.
 
-Die Anwesenheitstabelle wird von rechts nach links gelesen: Nummer (je Klasse ab 1), rechtsbündiger Schülername, Verwaltung und anschließend Termine vom frühesten rechts bis zum spätesten links. Nummern und Namen bleiben beim horizontalen Scrollen am rechten Rand sichtbar; die Beschriftung der durchgehenden Klassenkopfzeile bleibt links sichtbar. Neue spätere Termine erscheinen links.
+Die Anwesenheitstabelle wird von rechts nach links gelesen: Nummer (je Klasse ab 1), rechtsbündiger Schülername, Verwaltung und anschließend Termine vom frühesten rechts bis zum spätesten links. Nummern und Namen bleiben beim horizontalen Scrollen am rechten Rand sichtbar; die Beschriftung der durchgehenden Klassenkopfzeile bleibt links sichtbar. Neue spätere Termine erscheinen links. Auch ohne Termin zeigt die Tabelle die vorhandenen Schüler mit einer leeren Terminspalte und der Aktion „Termin anlegen“. Die Tabelle scrollt vertikal mit der Seite und ist nicht mehr auf eine eigene Kachelhöhe begrenzt; horizontal bleibt sie scrollbar.
 
 Über einen Klick auf das Datum lässt sich der Termin verwalten. **Termin löschen** entfernt nach Bestätigung den Termin und sämtliche zugehörigen Anwesenheits- und Klassenmeldungen atomar; die übrigen Termine, Klassen und Schüler bleiben erhalten. **Tag zurücksetzen** behält weiterhin den Termin bei.
 
