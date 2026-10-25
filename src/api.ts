@@ -1,9 +1,9 @@
-import {ownerRead,ownerAction} from './firebase-repository';
+import {ownerRead,ownerAction,watchOwnerCourse} from './firebase-repository';
 import {createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signInWithEmailAndPassword,signInAnonymously,signOut,onAuthStateChanged} from 'firebase/auth';
 import {auth,db,configured} from './firebase';
 import {collection,doc,getDoc,getDocs,onSnapshot,query,runTransaction,serverTimestamp,where,writeBatch,type Unsubscribe} from 'firebase/firestore';
 import {initial,mutate,type State} from './model';
-import {documentsFor,groupState,mergeLessons,tokenHash,type Course,type Channel,type Lesson} from './firebase-data';
+import {documentsFor,groupState,tokenHash,type Channel,type Lesson} from './firebase-data';
 export {configured};
 export type Access={course:string,token:string};
 export type Data={course:string,role:'admin'|'group',state:State,version:number};
@@ -72,7 +72,7 @@ export async function courseRequest(body:any,access:Access):Promise<Data>{
   return await groupRead(access);
  }
  owner();if(!access.course)throw Error('Bitte einen Kurs auswählen.');
- if(body)await ownerAction(services().db,owner(),body,access.course);const result=await ownerRead(services().db,access.course);
+ const result=body?await ownerAction(services().db,owner(),body,access.course):await ownerRead(services().db,access.course);
  return {course:access.course,role:'admin',state:result.state,version:result.meta.version};
 }
 
@@ -88,23 +88,7 @@ export async function watchCourse(access:Access,onChange:(data:Data)=>void,onErr
   },fail));
   stops.push(onSnapshot(collection(db,'channels',hash,'lessons'),snap=>{lessons=snap.docs.map(d=>d.data() as Lesson);emit();},fail));
  }else{
-  owner();let meta:Course|null=null,config:Pick<State,'students'|'groups'|'demo'>|null=null,sessions:State['sessions']|null=null;
-  let key='',groupStops:Unsubscribe[]=[],lessons=new Map<string,Lesson[]>();
-  const emit=()=>{
-   if(stopped||!meta||!config||!sessions||lessons.size!==config.groups.length)return;
-   onChange({course:access.course,role:'admin',version:meta.version,state:mergeLessons({...config,title:meta.title,sessions},[...lessons.values()].flat())});
-  };
-  stops.push(()=>groupStops.forEach(stop=>stop()));
-  stops.push(onSnapshot(doc(db,'courses',access.course,'private','config'),async snap=>{
-   if(!snap.exists())return;config=snap.data() as typeof config;
-   const groups=(snap.data().groups as State['groups']),next=groups.map(g=>g.token).join('|');
-   if(next===key){emit();return;}key=next;
-   const hashes=await Promise.all(groups.map(g=>tokenHash(g.token!)));if(stopped||key!==next)return;
-   groupStops.forEach(stop=>stop());lessons=new Map();
-   groupStops=hashes.map(hash=>onSnapshot(collection(db,'channels',hash,'lessons'),s=>{lessons.set(hash,s.docs.map(d=>d.data() as Lesson));emit();},fail));
-  },fail));
-  stops.push(onSnapshot(doc(db,'courses',access.course),snap=>{if(snap.exists()){meta=snap.data() as Course;emit();}else fail(Error('Kurs nicht gefunden.'));},fail));
-  stops.push(onSnapshot(collection(db,'courses',access.course,'sessions'),snap=>{sessions=snap.docs.map(d=>d.data() as State['sessions'][number]).sort((a,b)=>a.date.localeCompare(b.date));emit();},fail));
+  owner();stops.push(watchOwnerCourse(db,access.course,({state,meta})=>{if(!stopped)onChange({course:access.course,role:'admin',state,version:meta.version});},fail));
  }
  return ()=>{stopped=true;stops.forEach(stop=>stop());};
 }

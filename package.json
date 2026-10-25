@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "node --experimental-strip-types tests/model.test.ts && node --experimental-strip-types tests/changes.test.ts && node --experimental-strip-types tests/consolidation.test.ts && node --experimental-strip-types tests/export.test.ts && node --experimental-strip-types tests/firebase-data.test.ts",
+    "test": "node --experimental-strip-types tests/navigation.test.ts && node --experimental-strip-types tests/model.test.ts && node --experimental-strip-types tests/changes.test.ts && node --experimental-strip-types tests/consolidation.test.ts && node --experimental-strip-types tests/export.test.ts && node --experimental-strip-types tests/firebase-data.test.ts",
     "test:rules": "firebase emulators:exec --only firestore --project demo-kursblick \"node --experimental-strip-types --test tests/firestore.rules.test.ts\"",
     "typecheck:firebase": "tsc --noEmit -p tsconfig.firebase.json"
   },
