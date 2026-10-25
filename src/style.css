@@ -216,3 +216,25 @@
 }
 @media(max-width:380px){.breadcrumb{font-size:0;gap:0}.breadcrumb>svg{display:none}.breadcrumb>strong{font-size:11px}.topbar{gap:8px;padding:0 10px}.header-actions{gap:8px}}
 @media(prefers-reduced-motion:reduce){.sidebar{transition:none}}
+
+/* Class editing leaves more room for attendance columns. */
+.matrix .student-label.class-role,.class-students-editor .class-role{font-weight:750!important;color:#173f78}
+.class-edit-button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;background:transparent;color:#365c4b;border-radius:5px;flex-shrink:0}
+.class-edit-button:hover{background:#dce9e1}
+.class-students-editor{width:820px}
+.editor-class-name{text-align:right;margin:0 0 16px;font-size:18px}
+.class-student-rows{display:flex;flex-direction:column;gap:8px}
+.class-student-row{display:grid;grid-template-columns:68px minmax(110px,1fr) 32px minmax(160px,2fr);align-items:center;gap:8px;direction:ltr}
+.class-student-row input{width:100%;min-width:0;text-align:right;font-family:Calibri,Arial,sans-serif;font-size:18px}
+.class-student-row select{width:100%;min-width:0;text-align:right}
+.editor-order{display:flex;gap:4px}
+.editor-order button,.editor-delete{min-height:34px;width:32px;display:inline-flex;align-items:center;justify-content:center;background:#eef4f0;color:#355b49;border-radius:5px}
+.editor-delete{background:transparent;color:#a32128}.editor-delete:hover{background:#fce4e5}
+.editor-order button:disabled{cursor:default;opacity:.3}
+.editor-empty{text-align:right;color:#81948a;font-size:13px}
+@media(max-width:600px){
+ .class-students-editor{padding:24px 12px}.modal-backdrop:has(.class-students-editor){padding:10px}
+ .class-student-row{grid-template-columns:58px minmax(72px,1fr) 28px minmax(90px,1.5fr);gap:4px}
+ .editor-order{gap:2px}.editor-order button{width:28px}.editor-delete{width:28px}
+ .class-student-row input{font-size:17px;padding:8px 5px}.class-student-row select{font-size:11px;padding:8px 3px}
+}
