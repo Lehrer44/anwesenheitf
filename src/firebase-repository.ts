@@ -1,4 +1,4 @@
-import {collection,doc,getDoc,getDocs,onSnapshot,onSnapshotsInSync,runTransaction,type Firestore,type Unsubscribe} from 'firebase/firestore';
+import {collection,doc,getDoc,getDocs,onSnapshot,onSnapshotsInSync,query,where,runTransaction,type Firestore,type Unsubscribe} from 'firebase/firestore';
 import {mutate,normalizeLeaders,syncFutureSessions,type State} from './model.ts';
 import {changesBetween,documentsFor,mergeLessons,tokenHash,type Course,type Lesson,type Documents} from './firebase-data.ts';
 export async function ownerRead(db:Firestore,course:string){
@@ -11,7 +11,7 @@ export async function ownerRead(db:Firestore,course:string){
  const lessons:Lesson[]=[];
  await Promise.all(state.groups.map(async g=>{
   const path='channels/'+await tokenHash(g.token!);
-  const [channel,result]=await Promise.all([getDoc(doc(db,path)),getDocs(collection(db,path,'lessons'))]);
+  const [channel,result]=await Promise.all([getDoc(doc(db,path)),getDocs(query(collection(db,path,'lessons'),where('ownerUid','==',courseData.ownerUid)))]);
   if(channel.exists())docs.set(path,channel.data());
   result.forEach(d=>{docs.set(d.ref.path,d.data());lessons.push(d.data() as Lesson);});
  }));
@@ -63,33 +63,29 @@ export function watchOwnerCourse(db:Firestore,course:string,onChange:(value:{sta
   if(stopped||!meta||!config||!sessions||lessons.size!==config.groups.length)return;
   onChange({meta,state:mergeLessons({...config,title:meta.title,sessions},[...lessons.values()].flat())});
  };
+ const syncGroups=()=>{
+  if(!config||!meta)return;
+  const groups=config.groups,ownerUid=meta.ownerUid,next=ownerUid+'|'+groups.map(g=>g.token).join('|');
+  if(next===key)return;
+  key=next;const current=++revision;groupStops.forEach(stop=>stop());groupStops=[];lessons=new Map();
+  Promise.all(groups.map(g=>tokenHash(g.token!))).then(hashes=>{
+   if(stopped||revision!==current)return;
+   // Explicit ownership also keeps a removed channel's empty query authorized.
+   groupStops=hashes.map(hash=>onSnapshot(query(collection(db,'channels',hash,'lessons'),where('ownerUid','==',ownerUid)),snap=>{
+    if(stopped||revision!==current)return;
+    lessons.set(hash,snap.docs.map(d=>d.data() as Lesson));
+   },e=>{if(revision===current)fail(e);}));
+  }).catch(fail);
+ };
  const stops=[
   onSnapshot(doc(db,'courses',course,'private','config'),snap=>{
    if(!snap.exists()){fail(Error('Kurs nicht gefunden.'));return;}
    config=snap.data() as typeof config;
-   const groups=snap.data().groups as State['groups'],next=groups.map(g=>g.token).join('|');
-   if(next===key)return;
-   key=next;const current=++revision;groupStops.forEach(stop=>stop());groupStops=[];lessons=new Map();
-   Promise.all(groups.map(g=>tokenHash(g.token!))).then(hashes=>{
-    if(stopped||revision!==current)return;
-    groupStops=hashes.map((hash,index)=>onSnapshot(collection(db,'channels',hash,'lessons'),s=>{
-     if(stopped||revision!==current)return;
-     lessons.set(hash,s.docs.map(d=>d.data() as Lesson));
-    },e=>{
-     if(stopped||revision!==current)return;
-     // A removed/rotated channel may be denied before the config listener catches up.
-     // Confirm its removal; a still-active channel or revoked course access is an error.
-     getDoc(doc(db,'courses',course,'private','config')).then(snap=>{
-      if(stopped||revision!==current)return;
-      if(!snap.exists()||(snap.data().groups as State['groups']).some(g=>g.token===groups[index].token))fail(e);
-     }).catch(fail);
-    }));
-   }).catch(fail);
   },fail),
   onSnapshot(doc(db,'courses',course),snap=>{if(snap.exists())meta=snap.data() as Course;else fail(Error('Kurs nicht gefunden.'));},fail),
   onSnapshot(collection(db,'courses',course,'sessions'),snap=>{sessions=snap.docs.map(d=>d.data() as State['sessions'][number]).sort((a,b)=>a.date.localeCompare(b.date));},fail),
   // Publish once all listeners affected by one change have caught up.
-  onSnapshotsInSync(db,emit),
+  onSnapshotsInSync(db,()=>{if(!stopped){syncGroups();emit();}}),
  ];
  return ()=>{stopped=true;stops.forEach(stop=>stop());groupStops.forEach(stop=>stop());};
 }
