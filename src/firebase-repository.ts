@@ -72,10 +72,18 @@ export function watchOwnerCourse(db:Firestore,course:string,onChange:(value:{sta
    key=next;const current=++revision;groupStops.forEach(stop=>stop());groupStops=[];lessons=new Map();
    Promise.all(groups.map(g=>tokenHash(g.token!))).then(hashes=>{
     if(stopped||revision!==current)return;
-    groupStops=hashes.map(hash=>onSnapshot(collection(db,'channels',hash,'lessons'),s=>{
+    groupStops=hashes.map((hash,index)=>onSnapshot(collection(db,'channels',hash,'lessons'),s=>{
      if(stopped||revision!==current)return;
      lessons.set(hash,s.docs.map(d=>d.data() as Lesson));
-    },e=>{if(revision===current)fail(e);}));
+    },e=>{
+     if(stopped||revision!==current)return;
+     // A removed/rotated channel may be denied before the config listener catches up.
+     // Confirm its removal; a still-active channel or revoked course access is an error.
+     getDoc(doc(db,'courses',course,'private','config')).then(snap=>{
+      if(stopped||revision!==current)return;
+      if(!snap.exists()||(snap.data().groups as State['groups']).some(g=>g.token===groups[index].token))fail(e);
+     }).catch(fail);
+    }));
     if(!hashes.length)emit();
    }).catch(fail);
   },fail),

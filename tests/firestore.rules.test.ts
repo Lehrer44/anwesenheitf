@@ -27,51 +27,6 @@ before(async()=>{
 });
 after(async()=>{await env?.cleanup();});
 
-test('confirmed edits immediately return the saved state and live listeners publish complete versions',async()=>{
- const id='live-edit-course',s=initial(1),g=s.groups[0];
- mutate(s,{action:'addStudents',names:'Responsible\nHelper',group:g.id});
- mutate(s,{action:'session',date:future});
- const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(s,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
- const snapshots:Awaited<ReturnType<typeof ownerAction>>[]=[],errors:Error[]=[];
- const expected=new Map([[0,(await ownerRead(ownerDb,id)).state]]);
- const observer=env.authenticatedContext('owner',{email_verified:true,firebase:{sign_in_provider:'password'}}).firestore() as unknown as Firestore;
- const stop=watchOwnerCourse(observer,id,value=>snapshots.push(value),error=>errors.push(error));
- const waitFor=async(version:number)=>{
-  const limit=Date.now()+10000;
-  while(!snapshots.some(v=>v.meta.version===version)&&!errors.length&&Date.now()<limit)await new Promise(r=>setTimeout(r,20));
-  assert.deepEqual(errors,[]);assert.ok(snapshots.some(v=>v.meta.version===version),`Live version ${version} did not arrive`);
- };
- try{
-  await waitFor(0);
-  const actions=[
-   {action:'addStudents',names:'New pupil',group:g.id},
-   {action:'renameStudent',id:s.students[0].id,name:'Renamed responsible'},
-   {action:'group',id:g.id,name:'Renamed class',leaderId:s.students[0].id,helperId:s.students[1].id},
-   {action:'renameStudent',id:s.students[1].id,name:'Renamed helper'},
-   {action:'group',name:'Additional class',leader:''},
-   {action:'deleteGroup',id:g.id},
-  ];
-  for(const action of actions){
-   const saved=await ownerAction(ownerDb,'owner',action,id);
-   expected.set(saved.meta.version,saved.state);
-   const stored=await ownerRead(ownerDb,id);
-   assert.deepEqual(saved.state,stored.state);assert.deepEqual(saved.meta,stored.meta);
-   await waitFor(saved.meta.version);
-  }
-  for(const value of snapshots)assert.deepEqual(value.state,expected.get(value.meta.version),`Mixed live state at version ${value.meta.version}`);
-  const last=await ownerRead(ownerDb,id);
-  await assertFails(ownerAction(otherDb,'other-owner',{action:'renameStudent',id:s.students[0].id,name:'Denied'},id));
-  assert.deepEqual((await ownerRead(ownerDb,id)).state,last.state);
- }finally{stop();}
- // The zero-class state must also publish after subscriptions are removed.
- const last=await ownerRead(ownerDb,id),remaining=last.state.groups[0];
- const seen:number[]=[],emptyStop=watchOwnerCourse(ownerDb,id,v=>seen.push(v.state.groups.length),e=>errors.push(e));
- try{
-  await ownerAction(ownerDb,'owner',{action:'deleteGroup',id:remaining.id},id);
-  const limit=Date.now()+10000;while(!seen.includes(0)&&Date.now()<limit)await new Promise(r=>setTimeout(r,20));
-  assert.ok(seen.includes(0));assert.deepEqual(errors,[]);
- }finally{emptyStop();}
-});
 
 test('explicit manual approval permits only named nonanonymous administrators without email verification',async()=>{
  const context=(uid:string,claims:Record<string,unknown>,provider:'password'|'anonymous'='password')=>env.authenticatedContext(uid,{email_verified:false,...claims,firebase:{sign_in_provider:provider}}).firestore() as unknown as Firestore;
@@ -334,4 +289,50 @@ test('existing rules persist private helper choices without exposing writable ro
  assert.equal((await ownerRead(ownerDb,id)).state.students.find(p=>p.id===helper.id)!.name,'Renamed helper');
  await ownerAction(ownerDb,'owner',{action:'deleteStudent',id:helper.id},id);
  assert.equal((await ownerRead(ownerDb,id)).state.groups.find(g=>g.id===target.id)!.helperId,undefined);
+});
+
+test('confirmed edits immediately return the saved state and live listeners publish complete versions',async()=>{
+ const id='live-edit-course',s=initial(1),g=s.groups[0];
+ mutate(s,{action:'addStudents',names:'Responsible\nHelper',group:g.id});
+ mutate(s,{action:'session',date:future});
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(s,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+ const snapshots:Awaited<ReturnType<typeof ownerAction>>[]=[],errors:Error[]=[];
+ const expected=new Map([[0,(await ownerRead(ownerDb,id)).state]]);
+ const observer=env.authenticatedContext('owner',{email_verified:true,firebase:{sign_in_provider:'password'}}).firestore() as unknown as Firestore;
+ const stop=watchOwnerCourse(observer,id,value=>snapshots.push(value),error=>errors.push(error));
+ const waitFor=async(version:number)=>{
+  const limit=Date.now()+10000;
+  while(!snapshots.some(v=>v.meta.version===version)&&!errors.length&&Date.now()<limit)await new Promise(r=>setTimeout(r,20));
+  assert.deepEqual(errors,[]);assert.ok(snapshots.some(v=>v.meta.version===version),`Live version ${version} did not arrive`);
+ };
+ try{
+  await waitFor(0);
+  const actions=[
+   {action:'addStudents',names:'New pupil',group:g.id},
+   {action:'renameStudent',id:s.students[0].id,name:'Renamed responsible'},
+   {action:'group',id:g.id,name:'Renamed class',leaderId:s.students[0].id,helperId:s.students[1].id},
+   {action:'renameStudent',id:s.students[1].id,name:'Renamed helper'},
+   {action:'group',name:'Additional class',leader:''},
+   {action:'deleteGroup',id:g.id},
+  ];
+  for(const action of actions){
+   const saved=await ownerAction(ownerDb,'owner',action,id);
+   expected.set(saved.meta.version,saved.state);
+   const stored=await ownerRead(ownerDb,id);
+   assert.deepEqual(saved.state,stored.state);assert.deepEqual(saved.meta,stored.meta);
+   await waitFor(saved.meta.version);
+  }
+  for(const value of snapshots)assert.deepEqual(value.state,expected.get(value.meta.version),`Mixed live state at version ${value.meta.version}`);
+  const last=await ownerRead(ownerDb,id);
+  await assertFails(ownerAction(otherDb,'other-owner',{action:'renameStudent',id:s.students[0].id,name:'Denied'},id));
+  assert.deepEqual((await ownerRead(ownerDb,id)).state,last.state);
+ }finally{stop();}
+ // The zero-class state must also publish after subscriptions are removed.
+ const last=await ownerRead(ownerDb,id),remaining=last.state.groups[0];
+ const seen:number[]=[],emptyStop=watchOwnerCourse(ownerDb,id,v=>seen.push(v.state.groups.length),e=>errors.push(e));
+ try{
+  await ownerAction(ownerDb,'owner',{action:'deleteGroup',id:remaining.id},id);
+  const limit=Date.now()+10000;while(!seen.includes(0)&&Date.now()<limit)await new Promise(r=>setTimeout(r,20));
+  assert.ok(seen.includes(0));assert.deepEqual(errors,[]);
+ }finally{emptyStop();}
 });
