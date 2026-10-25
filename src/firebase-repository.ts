@@ -84,7 +84,6 @@ export function watchOwnerCourse(db:Firestore,course:string,onChange:(value:{sta
       if(!snap.exists()||(snap.data().groups as State['groups']).some(g=>g.token===groups[index].token))fail(e);
      }).catch(fail);
     }));
-    if(!hashes.length)emit();
    }).catch(fail);
   },fail),
   onSnapshot(doc(db,'courses',course),snap=>{if(snap.exists())meta=snap.data() as Course;else fail(Error('Kurs nicht gefunden.'));},fail),

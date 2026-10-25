@@ -312,6 +312,7 @@ test('confirmed edits immediately return the saved state and live listeners publ
    {action:'renameStudent',id:s.students[0].id,name:'Renamed responsible'},
    {action:'group',id:g.id,name:'Renamed class',leaderId:s.students[0].id,helperId:s.students[1].id},
    {action:'renameStudent',id:s.students[1].id,name:'Renamed helper'},
+   {action:'rotate',id:g.id},
    {action:'group',name:'Additional class',leader:''},
    {action:'deleteGroup',id:g.id},
   ];
@@ -329,10 +330,11 @@ test('confirmed edits immediately return the saved state and live listeners publ
  }finally{stop();}
  // The zero-class state must also publish after subscriptions are removed.
  const last=await ownerRead(ownerDb,id),remaining=last.state.groups[0];
- const seen:number[]=[],emptyStop=watchOwnerCourse(ownerDb,id,v=>seen.push(v.state.groups.length),e=>errors.push(e));
+ const seen:Awaited<ReturnType<typeof ownerAction>>[]=[],emptyStop=watchOwnerCourse(ownerDb,id,v=>seen.push(v),e=>errors.push(e));
  try{
-  await ownerAction(ownerDb,'owner',{action:'deleteGroup',id:remaining.id},id);
-  const limit=Date.now()+10000;while(!seen.includes(0)&&Date.now()<limit)await new Promise(r=>setTimeout(r,20));
-  assert.ok(seen.includes(0));assert.deepEqual(errors,[]);
+  const saved=await ownerAction(ownerDb,'owner',{action:'deleteGroup',id:remaining.id},id);
+  const limit=Date.now()+10000;while(!seen.some(v=>v.meta.version===saved.meta.version)&&Date.now()<limit)await new Promise(r=>setTimeout(r,20));
+  assert.ok(seen.some(v=>v.meta.version===saved.meta.version&&v.state.groups.length===0));assert.deepEqual(errors,[]);
+  for(const value of seen)assert.deepEqual(value.state,value.meta.version===saved.meta.version?saved.state:last.state);
  }finally{emptyStop();}
 });
