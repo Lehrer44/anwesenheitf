@@ -303,7 +303,7 @@ test('confirmed edits immediately return the saved state and live listeners publ
  const waitFor=async(version:number)=>{
   const limit=Date.now()+10000;
   while(!snapshots.some(v=>v.meta.version===version)&&!errors.length&&Date.now()<limit)await new Promise(r=>setTimeout(r,20));
-  assert.deepEqual(errors,[]);assert.ok(snapshots.some(v=>v.meta.version===version),`Live version ${version} did not arrive`);
+  assert.deepEqual(errors,[],`Live listener failed at version ${version}`);assert.ok(snapshots.some(v=>v.meta.version===version),`Live version ${version} did not arrive`);
  };
  try{
   await waitFor(0);
@@ -317,6 +317,7 @@ test('confirmed edits immediately return the saved state and live listeners publ
    {action:'deleteGroup',id:g.id},
   ];
   for(const action of actions){
+   console.log('Live edit regression action:',action.action);
    const saved=await ownerAction(ownerDb,'owner',action,id);
    expected.set(saved.meta.version,saved.state);
    const stored=await ownerRead(ownerDb,id);
