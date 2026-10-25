@@ -1,5 +1,36 @@
 import assert from 'node:assert/strict';
 import {initial,mutate,normalizeLeaders,groupView} from '../src/model.ts';
+
+// The class editor saves all changes atomically and rejects stale drafts.
+{
+ const state=initial(2),[a,b]=state.groups;
+ mutate(state,{action:'addStudents',names:'Leitung\nHelfer\nAnna\nBen',group:a.id});
+ mutate(state,{action:'addStudents',names:'Andere Klasse',group:b.id});
+ const [leader,helper,anna,ben]=state.students;
+ mutate(state,{action:'group',id:a.id,name:a.name,leaderId:leader.id,helperId:helper.id});
+ mutate(state,{action:'session',date:'2026-01-01'});state.sessions[0].marks[ben.id]='anwesend';
+ const original=structuredClone(state.students.filter(p=>p.group===a.id));
+ const draft=[{...anna,name:'Anna Neu',group:b.id},{...helper,name:'Helfer Neu'},{...leader,name:'Leitung Neu'}];
+ const body={action:'editClassStudents',group:a.id,original,students:draft};
+ assert.throws(()=>mutate(state,body,a));
+ const unchanged=structuredClone(state);
+ for(const students of [[...draft,{...draft[0]}],[{...draft[0],name:' '}],[{...draft[0],group:'unknown'}],[{...draft[0],id:'missing'}],[{...helper,group:b.id}]]){
+  assert.throws(()=>mutate(state,{...body,students}));assert.deepEqual(state,unchanged);
+ }
+ mutate(state,body);
+ assert.deepEqual(state.students.map(p=>p.id),[anna.id,helper.id,leader.id,unchanged.students[4].id]);
+ assert.equal(state.students[0].group,b.id);assert.equal(state.groups[0].leader,'Leitung Neu');assert.equal(state.groups[0].helperId,helper.id);
+ assert.equal(state.sessions[0].roster.find(p=>p.id===anna.id)?.name,'Anna');
+ assert.ok(!state.sessions[0].roster.some(p=>p.id===ben.id));assert.equal(state.sessions[0].marks[ben.id],undefined);
+ const after=structuredClone(state);assert.throws(()=>mutate(state,body),/zwischenzeitlich/);assert.deepEqual(state,after);
+ const remaining=structuredClone(state.students.filter(p=>p.group===a.id));
+ mutate(state,{action:'editClassStudents',group:a.id,original:remaining,students:[]});
+ assert.ok(!state.students.some(p=>p.group===a.id));assert.equal(state.groups[0].leaderId,undefined);assert.equal(state.groups[0].helperId,undefined);
+ const unassigned=initial();mutate(unassigned,{action:'addStudents',names:'Ohne Klasse'});
+ mutate(unassigned,{action:'editClassStudents',group:'',original:structuredClone(unassigned.students),students:[{...unassigned.students[0],name:'Neuer Name'}]});assert.equal(unassigned.students[0].name,'Neuer Name');
+ const stale=initial(1);mutate(stale,{action:'addStudents',names:'A',group:stale.groups[0].id});const old=structuredClone(stale.students);mutate(stale,{action:'addStudents',names:'B',group:stale.groups[0].id});assert.throws(()=>mutate(stale,{action:'editClassStudents',group:stale.groups[0].id,original:old,students:old}),/zwischenzeitlich/);
+ console.log('Class editor checks passed: atomic rename/move/reorder/delete, protected roles, stale drafts, empty classes, unassigned pupils and preserved history.');
+}
 const s=initial(7);mutate(s,{action:'addStudents',names:'Anna\nBen\nClara'});const anna=s.students[0],ben=s.students[1],g=s.groups[0];
 mutate(s,{action:'group',id:g.id,name:g.name,leader:'Anna'});assert.equal(g.leaderId,anna.id);assert.equal(s.students.length,3);assert.equal(anna.group,g.id);
 mutate(s,{action:'distribute'});assert.equal(anna.group,g.id);assert.throws(()=>mutate(s,{action:'assign',id:anna.id,group:s.groups[1].id}));assert.throws(()=>mutate(s,{action:'archive',id:anna.id}));

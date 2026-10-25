@@ -68,6 +68,21 @@ export function mutate(s:State,b:any,group?:Group):void {
   ids.forEach(id=>d.marks[id]=b.marks[id]);d.reports[group.id]=new Date().toISOString();return;
  }
  switch(b.action){
+ case 'editClassStudents':{
+  // A stale editor must not overwrite another person's student changes.
+  const current=groupedStudents(s).find(g=>g.id===b.group);
+  if(!current||!Array.isArray(b.original)||!Array.isArray(b.students)||b.students.length>b.original.length)throw Error('Ungültige Klassenbearbeitung.');
+  const sameStudent=(a:Student,z:Student)=>a&&z&&a.id===z.id&&a.name===z.name&&a.group===z.group&&!!a.archived===!!z.archived;
+  if(current.students.length!==b.original.length||current.students.some((p,i)=>!sameStudent(p,b.original[i])))throw Error('Die Schülerliste wurde zwischenzeitlich geändert. Bitte den Dialog schließen und erneut öffnen.');
+  const ids=new Set<string>();
+  for(const p of b.students){if(!p||typeof p.id!=='string'||ids.has(p.id)||!current.students.some(x=>x.id===p.id)||typeof p.name!=='string'||!p.name.trim()||p.name.trim().length>150||typeof p.group!=='string'||p.group&&!s.groups.some(g=>g.id===p.group))throw Error('Bitte gültige Schülernamen und Klassen wählen.');ids.add(p.id);}
+  // Validate and apply the whole edit on a copy; failures leave the original intact.
+  const edited=structuredClone(s);
+  for(const p of current.students)if(!ids.has(p.id))mutate(edited,{action:'deleteStudent',id:p.id});
+  for(const p of b.students){mutate(edited,{action:'renameStudent',id:p.id,name:p.name});mutate(edited,{action:'assign',id:p.id,group:p.group});}
+  const ordered=b.students.map((p:Student)=>edited.students.find(x=>x.id===p.id)!);let index=0;
+  edited.students=edited.students.map(p=>ids.has(p.id)?ordered[index++]:p);
+  Object.assign(s,edited);break;}
  case 'title':{
   const title=String(b.title||'').trim();
   if(!title||title.length>100)throw Error('Bitte einen Kursnamen mit 1 bis 100 Zeichen eingeben.');
