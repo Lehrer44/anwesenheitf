@@ -164,3 +164,22 @@
  .group-panel .status-btn.entschuldigt:not(.chosen){color:#185fa5;border-color:#185fa5}
  .group-panel .group-tools{padding:8px;gap:6px}.group-panel .report-info{font-size:12px}.group-panel .report-info small{font-size:11px}
 }
+
+/* Wide status tile and separate class reports. */
+.overview-top{display:grid;grid-template-columns:minmax(130px,.7fr) minmax(145px,.8fr) minmax(0,2.5fr);gap:14px;margin-bottom:14px;align-items:stretch}
+.overview-top>.stat{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.overview-top .stat-top{gap:8px}.overview-top .stat-value{margin-bottom:0}
+.status-card .datecard{padding:12px 16px;gap:10px;flex-wrap:wrap}
+.status-card .progress-label{padding:0 16px}.status-card .progress{margin:10px 16px 14px}
+.status-card .totals{margin:0 16px 12px;padding:10px 12px}
+.status-card .cancel-notice{padding:10px 16px}.status-card .empty{padding:20px 16px}
+.class-report-card .group-summary>div{padding:12px 0}.class-report-card .group-summary>div:first-child{border-top:0}
+/* Visible row boundaries, including pupil numbers on phones. */
+.group-panel .checkrow{border-top:2px solid #839b90}
+.group-panel .checkrow:nth-child(even){background:#edf3f0}
+.group-panel .studentname .avatar{display:grid;flex:0 0 24px;margin:0;border:1px solid #9aad9f;background:#e2ebe5;color:#244b39;font-weight:700}
+.group-panel .studentname{gap:6px}
+.group-panel .status-symbol{flex-direction:column;gap:1px}
+.group-panel .status-symbol small{font-size:10px;line-height:1;color:inherit}
+@media(max-width:950px){.overview-top{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-top>.status-card{grid-column:1/-1}}
+@media(max-width:760px){.group-panel .status-btn.entschuldigt{flex-basis:50px;width:50px;min-width:50px}.overview-top>.stat{padding:12px 14px}.status-card .totals>div+div{padding-left:8px}}
