@@ -131,3 +131,10 @@ Die Auswahl zeigt höchstens die letzten zwei bereits begonnenen Termine (einsch
 Eine bewusst gewählte Auswahl und ungesendete Angaben werden bei Aktualisierungen nicht überschrieben, solange der Termin im verfügbaren Zeitfenster bleibt. Wird ein Termin gelöscht oder fällt er aus diesem Fenster, wird ein alter Entwurf verworfen und ein Hinweis angezeigt. Das Kalenderdatum wird bei Fokuswechsel und regelmäßig aktualisiert, damit auch eine geöffnete Ansicht einen Tageswechsel berücksichtigt.
 
 Datum und „Zuletzt gesendet“ stehen in einer gemeinsamen Zeile; Klassenname, Leitungsname und zusätzliche Fußhinweise entfallen. Auf dem Handy stehen Name und drei kompakte Statusbuttons in einer Zeile: Haken = anwesend, Kreuz = abwesend, Dokument mit Häkchen und „Entsch.“ = entschuldigt. Zugängliche Beschriftungen nennen weiterhin den vollständigen Status und den Schülernamen.
+
+
+## Seitenwahl und bestätigte Änderungen
+
+Die Verwaltung merkt sich die Seite im URL-Parameter `view` (Übersicht, Tabelle oder Links). Neuladen erhält die aktuelle Seite. Persönliche Klassenlinks bleiben unverändert und enthalten weiterhin keine Verwaltungsnavigation.
+
+Nach einer Verwaltungsänderung zeigt die Oberfläche unmittelbar den von Firestore bestätigten Transaktionsstand. Das bisherige vollständige Nachladen aller Klassen nach jedem Speichern entfällt. Unabhängige Lesezugriffe beim Laden laufen parallel. Live-Änderungen werden erst gemeinsam veröffentlicht, sobald die betroffenen Listener synchron sind; ältere Kursversionen überschreiben keinen neueren Stand. Fehlgeschlagene Transaktionen werden weiterhin als Fehler angezeigt.
