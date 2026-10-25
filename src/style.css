@@ -205,8 +205,9 @@
  .sidebar .profile{padding-left:4px;white-space:nowrap}
  .sidebar .profile>span{flex:0 0 36px}
  .sidebar-backdrop{display:none}
- .main{margin-left:64px}
- .group-mode .main{margin-left:0}
+ /* Reserve the icon rail beside content, keeping the header full width. */
+ .main{margin-left:0}
+ .app:not(.group-mode) .content{margin-left:64px}
 }
 @media(max-width:760px){
  .header-actions{gap:10px}
