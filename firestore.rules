@@ -94,10 +94,12 @@ service cloud.firestore {
     && request.resource.data.ownerUid==request.auth.uid && request.resource.data.version==0;
    allow update: if owner(courseId) && validCourse(request.resource.data)
     && request.resource.data.ownerUid==resource.data.ownerUid && request.resource.data.version==resource.data.version+1;
-   // No client-side course deletion: prevent orphaned group access.
+   // Delete the root and private roster together. Active class links require an existing course.
+   allow delete: if owner(courseId) && !existsAfter(/databases/$(database)/documents/courses/$(courseId)/private/config);
    match /private/{configId} {
     allow read: if configId=='config' && owner(courseId);
     allow create,update: if configId=='config' && ownerAfter(courseId) && validConfig(request.resource.data);
+    allow delete: if configId=='config' && owner(courseId) && !existsAfter(/databases/$(database)/documents/courses/$(courseId));
    }
    match /sessions/{day} {
     allow read: if owner(courseId);

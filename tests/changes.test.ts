@@ -1,5 +1,15 @@
 import assert from 'node:assert/strict';
 import {initial,mutate,normalizeLeaders,groupView} from '../src/model.ts';
+import {courseChanges} from '../src/course-management.ts';
+
+{
+ const original=[{id:'one',title:'Erste'},{id:'two',title:'Zweite'}];
+ assert.deepEqual(courseChanges(original,[{id:'one',title:' Neu '},{title:'Dritte',groupCount:0}]),{renamed:[{id:'one',title:'Neu',previousTitle:'Erste'}],deleted:[original[1]],added:[{title:'Dritte',groupCount:0}]});
+ assert.deepEqual(courseChanges(original,original),{renamed:[],deleted:[],added:[]});
+ assert.deepEqual(courseChanges(original,[]).deleted,original);
+ for(const rows of [[{id:'unknown',title:'Fremd'}],[original[0],original[0]],[{title:' ',groupCount:0}],[{title:'x'.repeat(101),groupCount:0}],[{title:'Neu',groupCount:31}],[{title:'Neu',groupCount:1.5}],[{title:'Neu'}]])assert.throws(()=>courseChanges(original,rows));
+ console.log('Course list planning checks passed: rename, staged deletion, additions, unchanged lists, duplicate/foreign IDs and validation.');
+}
 
 // The class editor saves all changes atomically and rejects stale drafts.
 {

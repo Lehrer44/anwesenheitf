@@ -6,6 +6,7 @@ import {collection,collectionGroup,doc,getDoc,getDocs,onSnapshot,query,serverTim
 import {initial,mutate} from '../src/model.ts';
 import {documentsFor,tokenHash,type Lesson} from '../src/firebase-data.ts';
 import {ownerAction,ownerRead,watchOwnerCourse} from '../src/firebase-repository.ts';
+import {saveCourseLists} from '../src/firebase-course-management.ts';
 
 let env:RulesTestEnvironment,ownerDb:Firestore,otherDb:Firestore,groupDb:Firestore,publicDb:Firestore;
 let firstHash:string,secondHash:string,student:string,secondStudent:string;
@@ -26,6 +27,38 @@ before(async()=>{
  const other=writeBatch(otherDb);for(const [path,value] of await documentsFor(initial(7),'course-two','other-owner',0))other.set(doc(otherDb,path),value);await assertSucceeds(other.commit());
 });
 after(async()=>{await env?.cleanup();});
+
+test('list editor atomically renames, creates and deletes complete courses',async()=>{
+ const id='lists-delete',keep='lists-rename',state=initial(2),unchanged=initial(1);
+ mutate(state,{action:'addStudents',names:'Delete pupil',group:state.groups[0].id});
+ mutate(state,{action:'session',date:day});state.sessions[0].marks[state.students[0].id]='anwesend';
+ mutate(unchanged,{action:'addStudents',names:'Keep pupil',group:unchanged.groups[0].id});mutate(unchanged,{action:'session',date:day});
+ const all=new Map([...await documentsFor(state,id,'owner',0),...await documentsFor(unchanged,keep,'owner',0)]),batch=writeBatch(ownerDb);
+ for(const [path,value] of all)batch.set(doc(ownerDb,path),value);await batch.commit();
+ const original=[{id,title:state.title},{id:keep,title:unchanged.title}],rows=[{id:keep,title:'Geändert'},{title:'Neue Liste',groupCount:2}];
+ await assertFails(deleteDoc(doc(ownerDb,'courses',id)));await assertFails(deleteDoc(doc(ownerDb,'courses',id,'private','config')));
+ for(const db of [otherDb,groupDb,publicDb])await assertFails(saveCourseLists(db,'other-owner',original,rows));
+ assert.ok((await getDoc(doc(ownerDb,'courses',id))).exists());
+ const created=await assertSucceeds(saveCourseLists(ownerDb,'owner',original,rows));assert.equal(created.length,1);
+ const fresh=await ownerRead(ownerDb,created[0]);assert.equal(fresh.state.title,'Neue Liste');assert.equal(fresh.state.groups.length,2);
+ const renamed=await ownerRead(ownerDb,keep);assert.equal(renamed.meta.title,'Geändert');assert.equal(renamed.meta.ownerUid,'owner');assert.deepEqual(renamed.state.students,unchanged.students);assert.deepEqual(renamed.state.sessions,unchanged.sessions);
+ const hash=await tokenHash(unchanged.groups[0].token!);assert.equal((await getDoc(doc(groupDb,'channels',hash))).data()!.title,'Geändert');
+ await env.withSecurityRulesDisabled(async context=>{const db=context.firestore() as unknown as Firestore;for(const path of all.keys())if(path==='courses/'+id||path.startsWith('courses/'+id+'/')||path.startsWith('channels/')&&(all.get(path) as any).courseId===id)assert.equal((await getDoc(doc(db,path))).exists(),false,path);});
+ const deletedHash=await tokenHash(state.groups[0].token!);await assertFails(getDoc(doc(groupDb,'channels',deletedHash)));await assertFails(updateDoc(doc(groupDb,'channels',deletedHash,'lessons',day),{marks:{[state.students[0].id]:'anwesend'},reportedAt:serverTimestamp()}));
+ await assert.rejects(saveCourseLists(ownerDb,'owner',[{id:keep,title:unchanged.title}],[]),/zwischenzeitlich/);assert.ok((await getDoc(doc(ownerDb,'courses',keep))).exists());
+ const admin=env.authenticatedContext('list-admin',{email_verified:true,administrator:true,firebase:{sign_in_provider:'password'}}).firestore() as unknown as Firestore;
+ await assertSucceeds(saveCourseLists(admin,'list-admin',[{id:keep,title:'Geändert'}],[]));
+ await env.withSecurityRulesDisabled(async context=>{const db=context.firestore() as unknown as Firestore;assert.equal((await getDoc(doc(db,'courses',keep))).exists(),false);assert.equal((await getDocs(collection(db,'courses',keep,'sessions'))).size,0);});
+});
+
+test('orphaned class channels cannot be used after their course is removed',async()=>{
+ const id='orphaned-list',state=initial(1);mutate(state,{action:'addStudents',names:'Pupil',group:state.groups[0].id});mutate(state,{action:'session',date:day});
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+ const hash=await tokenHash(state.groups[0].token!);await assertSucceeds(getDoc(doc(groupDb,'channels',hash)));
+ // A malicious client omitting cleanup still cannot leave a usable class link.
+ const remove=writeBatch(ownerDb);remove.delete(doc(ownerDb,'courses',id));remove.delete(doc(ownerDb,'courses',id,'private','config'));await assertSucceeds(remove.commit());
+ await assertFails(getDoc(doc(groupDb,'channels',hash)));await assertFails(getDoc(doc(groupDb,'channels',hash,'lessons',day)));await assertFails(updateDoc(doc(groupDb,'channels',hash,'lessons',day),{marks:{[state.students[0].id]:'anwesend'},reportedAt:serverTimestamp()}));
+});
 
 
 test('explicit manual approval permits only named nonanonymous administrators without email verification',async()=>{

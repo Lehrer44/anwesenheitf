@@ -7,7 +7,10 @@ import {documentsFor,groupState,tokenHash,type Channel,type Lesson} from './fire
 export {configured};
 export type Access={course:string,token:string};
 export type Data={course:string,role:'admin'|'group',state:State,version:number};
-export type CourseChoice={id:string,title:string};
+export type {CourseChoice} from './course-management';
+import type {CourseChoice,CourseEdit} from './course-management';
+import {saveCourseLists} from './firebase-course-management';
+export async function manageCourseLists(original:CourseChoice[],rows:CourseEdit[]){return saveCourseLists(services().db,owner(),original,rows);}
 let manuallyApprovedUid='';
 async function refreshAccountAccess(force=false){
  const user=auth?.currentUser;

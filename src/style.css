@@ -238,3 +238,16 @@
  .editor-order{gap:2px}.editor-order button{width:28px}.editor-delete{width:28px}
  .class-student-row input{font-size:17px;padding:8px 5px}.class-student-row select{font-size:11px;padding:8px 3px}
 }
+
+/* Class names stay left; the count and settings follow the visible right edge. */
+.matrix-panel .tablewrap{container-type:inline-size}
+.matrix.consolidated .group-divider .group-heading{width:100cqw;max-width:100%;justify-content:space-between;flex-wrap:nowrap}
+.matrix.consolidated .group-heading>strong{flex:1;min-width:0}
+.class-heading-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-left:auto;flex-shrink:0;font-size:12px;white-space:nowrap}
+.course-picker .course-settings{padding:6px 10px;min-width:38px}
+.course-list-rows{display:flex;flex-direction:column;gap:12px}
+.course-list-row{display:grid;grid-template-columns:minmax(0,1fr) 34px;align-items:end;gap:6px 10px}
+.course-list-row label{margin:0}.course-list-row input{min-width:0}
+.course-list-row .editor-delete{margin-bottom:3px}
+.course-list-row .new-list-count{grid-column:1/-1;max-width:200px}
+.add-course-list{margin-top:18px}
