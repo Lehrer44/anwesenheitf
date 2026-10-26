@@ -49,6 +49,7 @@ test('list editor atomically renames, creates and deletes complete courses',asyn
  const admin=env.authenticatedContext('list-admin',{email_verified:true,administrator:true,firebase:{sign_in_provider:'password'}}).firestore() as unknown as Firestore;
  await assertSucceeds(saveCourseLists(admin,'list-admin',[{id:keep,title:'Geändert'}],[]));
  await env.withSecurityRulesDisabled(async context=>{const db=context.firestore() as unknown as Firestore;assert.equal((await getDoc(doc(db,'courses',keep))).exists(),false);assert.equal((await getDocs(collection(db,'courses',keep,'sessions'))).size,0);});
+ await assertSucceeds(saveCourseLists(ownerDb,'owner',[{id:created[0],title:'Neue Liste'}],[]));
 });
 
 test('orphaned class channels cannot be used after their course is removed',async()=>{
