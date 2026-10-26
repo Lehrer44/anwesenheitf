@@ -28,6 +28,24 @@ before(async()=>{
 });
 after(async()=>{await env?.cleanup();});
 
+test('thirty dates can be added and deleted atomically with all class copies',async()=>{
+ const id='bulk-dates',state=initial(7);for(let i=0;i<7;i++)mutate(state,{action:'addStudents',names:'Pupil '+i,group:state.groups[i].id});
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+ const dates=Array.from({length:30},(_,i)=>{const d=new Date('2020-01-01T12:00:00Z');d.setUTCDate(d.getUTCDate()+i*7);return d.toISOString().slice(0,10);});
+ await assertFails(ownerAction(otherDb,'other-owner',{action:'sessions',dates},id));await assertFails(ownerAction(groupDb,'group-device',{action:'sessions',dates},id));
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'sessions',dates:[...dates].reverse()},id));const loaded=await ownerRead(ownerDb,id);assert.deepEqual(loaded.meta.dates,dates);assert.equal(loaded.state.sessions.length,30);
+ const hash=await tokenHash(state.groups[0].token!),pupil=state.students[0].id;assert.equal((await getDocs(collection(groupDb,'channels',hash,'lessons'))).size,30);
+ await updateDoc(doc(groupDb,'channels',hash,'lessons',dates[0]),{marks:{[pupil]:'anwesend'},reportedAt:serverTimestamp()});const reported=await ownerRead(ownerDb,id);
+ await assert.rejects(ownerAction(ownerDb,'owner',{action:'sessions',dates:[dates[0],'2021-01-01']},id),/bereits angelegt/);assert.deepEqual((await ownerRead(ownerDb,id)).state.sessions,reported.state.sessions);
+ await assert.rejects(ownerAction(ownerDb,'owner',{action:'deleteSessions',dates:[dates[0],'1999-01-01']},id),/nicht mehr/);assert.equal((await ownerRead(ownerDb,id)).state.sessions.length,30);
+ const removed=dates.slice(1);await assertFails(ownerAction(groupDb,'group-device',{action:'deleteSessions',dates:removed},id));await assertFails(ownerAction(otherDb,'other-owner',{action:'deleteSessions',dates:removed},id));
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'deleteSessions',dates:removed},id));const remaining=await ownerRead(ownerDb,id);assert.deepEqual(remaining.meta.dates,[dates[0]]);assert.deepEqual(remaining.state.sessions,reported.state.sessions.slice(0,1));assert.deepEqual(remaining.state.students,state.students);
+ await env.withSecurityRulesDisabled(async context=>{const db=context.firestore() as unknown as Firestore;for(const g of state.groups){const channel=await tokenHash(g.token!);assert.equal((await getDocs(collection(db,'channels',channel,'lessons'))).size,1);}assert.equal((await getDocs(collection(db,'courses',id,'sessions'))).size,1);});
+ assert.equal((await getDoc(doc(groupDb,'channels',hash,'lessons',dates[1]))).exists(),false);await assertFails(updateDoc(doc(groupDb,'channels',hash,'lessons',dates[1]),{marks:{[pupil]:'anwesend'},reportedAt:serverTimestamp()}));
+ // Remove the isolated fixture so existing owner-query assertions stay unchanged.
+ await saveCourseLists(ownerDb,'owner',[{id,title:state.title}],[]);
+});
+
 test('list editor atomically renames, creates and deletes complete courses',async()=>{
  const id='lists-delete',keep='lists-rename',state=initial(2),unchanged=initial(1);
  mutate(state,{action:'addStudents',names:'Delete pupil',group:state.groups[0].id});

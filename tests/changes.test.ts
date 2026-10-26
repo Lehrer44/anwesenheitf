@@ -1,6 +1,24 @@
 import assert from 'node:assert/strict';
 import {initial,mutate,normalizeLeaders,groupView} from '../src/model.ts';
 import {courseChanges} from '../src/course-management.ts';
+import {isDate,monthDays,shiftMonth} from '../src/calendar.ts';
+
+{
+ assert.equal(isDate('2028-02-29'),true);for(const d of ['2026-02-29','2026-99-99','2026-04-31','2026-1-01','not-a-date',null,42])assert.equal(isDate(d),false);
+ assert.equal(monthDays('2028-02').filter(Boolean).length,29);assert.equal(monthDays('2026-02').filter(Boolean).length,28);assert.equal(monthDays('2026-02').findIndex(Boolean),6);assert.deepEqual(monthDays('invalid'),[]);assert.equal(shiftMonth('2026-12',1),'2027-01');assert.equal(shiftMonth('2027-01',-1),'2026-12');
+ const state=initial(1);mutate(state,{action:'addStudents',names:'Anna\nBen',group:state.groups[0].id});
+ mutate(state,{action:'session',date:'2026-01-01'});state.sessions[0].marks[state.students[0].id]='anwesend';state.sessions[0].reports[state.groups[0].id]='sent';const preserved=structuredClone(state.sessions[0]);
+ const dates=Array.from({length:30},(_,i)=>{const d=new Date('2026-10-01T12:00:00Z');d.setUTCDate(d.getUTCDate()+i*7);return d.toISOString().slice(0,10);});
+ const unchanged=structuredClone(state);
+ for(const selected of [[],['bad'],['2026-99-99'],['2026-02-30'],[dates[0],dates[0]],[dates[0],'2026-01-01']]){assert.throws(()=>mutate(state,{action:'sessions',dates:selected}));assert.deepEqual(state,unchanged);}
+ assert.throws(()=>mutate(state,{action:'sessions',dates},state.groups[0]));assert.throws(()=>mutate(initial(1),{action:'sessions',dates}));
+ mutate(state,{action:'sessions',dates:[...dates].reverse()});assert.equal(state.sessions.length,31);assert.deepEqual(state.sessions.map(d=>d.date),['2026-01-01',...dates]);assert.deepEqual(state.sessions[0],preserved);assert.notEqual(state.sessions[1].roster,state.sessions[2].roster);assert.notEqual(state.sessions[1].roster[0],state.sessions[2].roster[0]);
+ const full=structuredClone(state);assert.throws(()=>mutate(state,{action:'deleteSessions',dates:[dates[0],'2000-01-01']}));assert.deepEqual(state,full);assert.throws(()=>mutate(state,{action:'deleteSessions',dates},state.groups[0]));
+ mutate(state,{action:'deleteSessions',dates:dates.filter((_,i)=>i%2===0)});assert.deepEqual(state.sessions.map(d=>d.date),['2026-01-01',...dates.filter((_,i)=>i%2!==0)]);assert.deepEqual(state.sessions[0],preserved);
+ mutate(state,{action:'deleteSessions',dates:state.sessions.map(d=>d.date)});assert.deepEqual(state.sessions,[]);assert.equal(state.students.length,2);assert.equal(state.groups.length,1);
+ const limit=structuredClone(unchanged);limit.sessions=Array.from({length:1000},()=>structuredClone(preserved));assert.throws(()=>mutate(limit,{action:'sessions',dates:[dates[0]]}),/1.000/);assert.equal(limit.sessions.length,1000);
+ console.log('Multiple-date checks passed: leap years, month/year changes, 30 weekly dates, atomic validation, independent rosters, existing marks preserved, partial/all deletion, stale selection and class-link rejection.');
+}
 
 {
  const original=[{id:'one',title:'Erste'},{id:'two',title:'Zweite'}];

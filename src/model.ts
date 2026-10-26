@@ -1,3 +1,4 @@
+import {sessionDates} from './calendar.ts';
 export type Student={id:string,name:string,group:string,archived?:boolean};
 export type Group={id:string,name:string,leader:string,leaderId?:string,helperId?:string,leaderNeedsSelection?:boolean,token?:string};
 export type Status='anwesend'|'abwesend'|'entschuldigt';
@@ -142,6 +143,17 @@ export function mutate(s:State,b:any,group?:Group):void {
   if(helper){helper.group=g.id;helper.archived=false;g.helperId=helper.id;}else delete g.helperId;
   g.name=name;if(isNew)s.groups.push(g);break;}
  case 'rotate':{const g=s.groups.find(x=>x.id===b.id);if(g)g.token=crypto.randomUUID()+crypto.randomUUID();break;}
+ case 'sessions':{
+  const dates=sessionDates(b.dates);
+  if(s.sessions.length+dates.length>1000)throw Error('Maximal 1.000 Termine pro Liste.');
+  if(dates.some(date=>s.sessions.some(d=>d.date===date)))throw Error('Ein ausgewählter Termin ist bereits angelegt. Bitte die Auswahl prüfen.');
+  const roster=s.students.filter(p=>!p.archived);if(!roster.length)throw Error('Bitte zuerst Schüler hinzufügen.');
+  const additions=dates.map(date=>({date,cancelled:'',roster:roster.map(p=>({...p})),marks:{},reports:{}}));
+  s.sessions=[...s.sessions,...additions].sort((a,b)=>a.date.localeCompare(b.date));break;}
+ case 'deleteSessions':{
+  const dates=new Set(sessionDates(b.dates));
+  if([...dates].some(date=>!s.sessions.some(d=>d.date===date)))throw Error('Ein ausgewählter Termin ist nicht mehr vorhanden. Bitte die Auswahl prüfen.');
+  s.sessions=s.sessions.filter(d=>!dates.has(d.date));break;}
  case 'session':{
   if(!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||new Date(b.date).toISOString().slice(0,10)!==b.date)throw Error('Bitte ein gültiges Datum wählen.');
   if(s.sessions.some(x=>x.date===b.date))throw Error('Dieser Termin ist bereits angelegt.');
