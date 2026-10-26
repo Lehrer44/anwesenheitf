@@ -272,3 +272,16 @@
 .session-dates-editor .modal-actions{margin-top:18px;padding-top:14px}
 .lesson-actions{flex-wrap:wrap}
 @media(max-width:600px){.session-dates-editor{padding:24px 14px}.modal-backdrop:has(.session-dates-editor){padding:10px}.multi-calendar{gap:3px}.calendar-day{min-height:36px}.calendar-toolbar{gap:6px}.calendar-selection{gap:8px}}
+
+/* Registration can resume while the address awaits verification. */
+.login-page{grid-template-columns:minmax(0,1fr);min-width:0}.login-card{min-width:0}
+.verification-panel{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.verification-panel>p,.verification-help p{font-size:12px;line-height:1.7;color:#6e8172}
+.verification-email{font-size:14px;overflow-wrap:anywhere;margin-bottom:4px}
+.verification-panel>.btn{width:100%;min-height:42px;white-space:normal}
+.verification-panel>.textbutton{justify-content:center}
+.verification-panel .alert{margin:0;overflow-wrap:anywhere}
+.verification-help{font-size:12px;color:#6e8172;border:1px solid #e1e8e3;border-radius:8px;padding:12px}
+.verification-help summary{cursor:pointer;color:#365c4b}.verification-help summary:focus-visible{outline:3px solid #79b6a1;outline-offset:3px}
+.verification-help p{margin-top:10px}.verification-help a{text-decoration:underline;color:#286b54}
+@media(max-width:600px){.login-card{padding:26px 18px}.login-page{padding:22px 8px}.login-card .brand{margin-bottom:24px}}

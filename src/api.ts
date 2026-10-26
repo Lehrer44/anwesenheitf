@@ -1,5 +1,6 @@
 import {ownerRead,ownerAction,watchOwnerCourse} from './firebase-repository';
-import {createUserWithEmailAndPassword,sendEmailVerification,sendPasswordResetEmail,signInWithEmailAndPassword,signInAnonymously,signOut,onAuthStateChanged} from 'firebase/auth';
+import {signInAnonymously} from 'firebase/auth';
+import {createAccountAccess} from './account-auth';
 import {auth,db,configured} from './firebase';
 import {collection,doc,getDoc,getDocs,onSnapshot,query,runTransaction,serverTimestamp,where,writeBatch,type Unsubscribe} from 'firebase/firestore';
 import {initial,mutate,type State} from './model';
@@ -11,31 +12,10 @@ export type {CourseChoice} from './course-management';
 import type {CourseChoice,CourseEdit} from './course-management';
 import {saveCourseLists} from './firebase-course-management';
 export async function manageCourseLists(original:CourseChoice[],rows:CourseEdit[]){return saveCourseLists(services().db,owner(),original,rows);}
-let manuallyApprovedUid='';
-async function refreshAccountAccess(force=false){
- const user=auth?.currentUser;
- if(!user||user.isAnonymous){manuallyApprovedUid='';return;}
- const {claims}=await user.getIdTokenResult(force);
- if(auth?.currentUser?.uid===user.uid)manuallyApprovedUid=claims.administrator===true&&claims.manualAccessApproved===true?user.uid:'';
-}
-export const session=()=>auth?.currentUser&&!auth.currentUser.isAnonymous&&(auth.currentUser.emailVerified||manuallyApprovedUid===auth.currentUser.uid)?auth.currentUser:null;
-export async function ready(){if(auth){await auth.authStateReady();await refreshAccountAccess();}}
-export function watchAuth(fn:()=>void){return auth?onAuthStateChanged(auth,()=>{refreshAccountAccess().then(fn).catch(()=>{manuallyApprovedUid='';fn();});}):()=>{};}
 function services(){if(!db||!auth)throw Error('Firebase ist noch nicht eingerichtet.');return {db,auth};}
-export async function login(email:string,password:string){
- const {auth}=services();const {user}=await signInWithEmailAndPassword(auth,email,password);
- await refreshAccountAccess(true);
- if(!user.emailVerified&&!session()){
-  try{await sendEmailVerification(user);}finally{await signOut(auth);manuallyApprovedUid='';}
-  throw Error('Dein Konto benötigt eine E-Mail-Bestätigung oder eine gezielte Administratorfreigabe. Der Versand einer Bestätigungs-E-Mail wurde angefordert.');
- }
-}
-export async function signup(email:string,password:string){
- const {auth}=services();const {user}=await createUserWithEmailAndPassword(auth,email,password);
- try{await sendEmailVerification(user);}finally{await signOut(auth);}return false;
-}
-export async function resetPassword(email:string){if(!email.trim())throw Error('Bitte zuerst die E-Mail-Adresse eingeben.');await sendPasswordResetEmail(services().auth,email);}
-export async function logout(){if(auth)await signOut(auth);}
+const accounts=createAccountAccess(auth,{continueUrl:typeof location==='undefined'?undefined:location.origin+location.pathname});
+export const session=accounts.session,ready=accounts.ready,watchAuth=accounts.watch,login=accounts.login,signup=accounts.signup,resetPassword=accounts.resetPassword,logout=accounts.logout;
+export const pendingAccount=accounts.pending,verificationCooldown=accounts.cooldown,resendVerification=accounts.resend,checkVerification=accounts.check;
 async function groupUser(){const {auth}=services();await ready();if(!auth.currentUser)await signInAnonymously(auth);}
 function owner(){const user=session();if(!user)throw Error('Bitte mit einem bestätigten oder ausdrücklich freigeschalteten Konto anmelden.');return user.uid;}
 export async function isAdministrator(){
