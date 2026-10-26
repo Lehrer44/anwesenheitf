@@ -5,7 +5,9 @@
     "tests/firestore.rules.test.ts",
     "src/model.ts",
     "src/firebase-data.ts",
-    "src/firebase-repository.ts"
+    "src/firebase-repository.ts",
+    "tests/account-auth.test.ts",
+    "src/account-auth.ts"
   ],
   "compilerOptions": {
     "types": [

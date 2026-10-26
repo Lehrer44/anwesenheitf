@@ -15,3 +15,4 @@ ui-debug.log*
 service-account*.json
 firebase-admin*.json
 
+auth-debug.log*
