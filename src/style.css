@@ -285,3 +285,45 @@
 .verification-help summary{cursor:pointer;color:#365c4b}.verification-help summary:focus-visible{outline:3px solid #79b6a1;outline-offset:3px}
 .verification-help p{margin-top:10px}.verification-help a{text-decoration:underline;color:#286b54}
 @media(max-width:600px){.login-card{padding:26px 18px}.login-page{padding:22px 8px}.login-card .brand{margin-bottom:24px}}
+
+/* Slightly stronger surfaces and labels remain legible on a projector. */
+:root{--surface-edge:#aebfb5;--divider:#c2cfc7;--secondary-text:#526b5e;background:#e7eee9;color:#203b30}
+.panel,.stat,.login-card,.welcome{border-color:var(--surface-edge);box-shadow:0 2px 5px #244b3912}
+.topbar,.sidebar{border-color:var(--surface-edge)}
+.panelhead{background:#f0f5f1;border-bottom-color:var(--divider)}
+.btn:not(.primary):not(.danger),input,select,textarea,.search{border-color:#a9bdb0;color:#365544}
+.nav{color:#526b5e}.nav:hover{background:#e4eee7}.nav.active{background:#d3e5d9;color:#20583f}
+.nav-label,.breadcrumb,.breadcrumb strong,.live,.profile small,.eyebrow,.stat-top,.stat p,.pagehead p,.panelhead p,.datecard p,.calendar-tile small,.progress-label,.totals small,.muted,.hint,.empty p,.login-card>p,.login-note,.groupcard .class-roles small,.group-summary small,.editor-empty,.session-dates-editor .calendar-hint,.session-dates-editor .calendar-legend,.multi-calendar .weekday,.verification-panel>p,.verification-help p{color:var(--secondary-text)}
+.green{background:#dceee1;color:#285e3b}.grey{background:#e3e9e5;color:#53675b}.amber{background:#f5e9cb;color:#745c23}
+.progress{background:#d7e2da}.progress>span{background:#417c56}
+.modal{border:1px solid var(--surface-edge)}
+.modal-actions,.groupcard-footer,.group-panel .group-tools{border-color:var(--divider)}
+.matrix.consolidated :is(th,td){border-color:var(--divider)}
+.matrix.consolidated .student-column{border-left-color:var(--surface-edge)}
+.matrix .student-label:not(.class-role){color:#284739}
+.group-panel .checkrow:nth-child(even){background:#e4eee7}
+.status-btn:not(.chosen){border-color:#9aafa2}
+
+/* Each complete report row opens a read-only view of the selected lesson. */
+.class-report-row{display:flex;align-items:center;gap:11px;width:100%;padding:12px 8px;background:#fff;color:inherit;border-top:1px solid var(--divider);text-align:left}
+.class-report-row:first-child{border-top:0}.class-report-row:hover{background:#e4eee7}.class-report-row:focus-visible{position:relative;z-index:1;outline-offset:-3px}
+.class-report-label{min-width:0;overflow-wrap:anywhere}.class-report-row .mini-icon{flex-shrink:0}
+.class-attendance-preview{width:640px;display:flex;flex-direction:column;overflow:hidden;outline:none}
+.class-attendance-preview h2{text-align:right;flex-shrink:0}
+.class-attendance-preview .modal-actions{flex-shrink:0}
+.preview-roster{min-height:0;overflow:auto}
+.preview-table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid #9aafa2;white-space:normal}
+.preview-table :is(th,td):first-child{min-width:0}
+.preview-table th,.preview-table td{border-bottom:1px solid #aebfb5;padding:9px 8px;vertical-align:middle}
+.preview-table th{background:#dce8df;color:#365544;font-size:12px;text-align:right}
+.preview-table th:first-child{width:140px;text-align:center}
+.preview-table th:last-child{width:42px;text-align:center}
+.preview-table tbody tr:nth-child(even){background:#e9f0eb}
+.preview-name{text-align:right;overflow-wrap:anywhere;font-family:Calibri,Arial,sans-serif;font-size:20px;color:#253d3a}
+.preview-number{text-align:center;font-size:14px;font-variant-numeric:tabular-nums;color:#365544}
+.preview-table .cellstatus{white-space:normal;font-size:13px;padding:6px}
+@media(max-width:600px){
+ .modal-backdrop:has(.class-attendance-preview){padding:10px}.class-attendance-preview{padding:22px 12px}
+ .preview-table th:first-child{width:104px}.preview-table th:last-child{width:32px}
+ .preview-table th,.preview-table td{padding:8px 5px}.preview-table .cellstatus{font-size:12px}.preview-name{font-size:19px}
+}
