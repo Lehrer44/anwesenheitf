@@ -320,27 +320,31 @@ test('deleting a lesson removes all copies and blocks stale class submissions',a
 });
 
 
-test('existing rules persist private helper choices without exposing writable roles through class links',async()=>{
+test('existing rules persist teachers separately from pupils and protect private assignments',async()=>{
  const id='class-role-course',state=initial(2),past='2000-04-01',future='2099-04-01';
  mutate(state,{action:'addStudents',names:'Responsible\nHelper',group:state.groups[0].id});
+ state.groups[0].leader='Responsible';state.groups[0].leaderId=state.students[0].id;state.groups[0].helperId=state.students[1].id;
  for(const date of [past,future])mutate(state,{action:'session',date});
  const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
- const [responsible,helper]=state.students,target=state.groups[1],hash=await tokenHash(target.token!);
+ const helper=state.students[1],target=state.groups[1],hash=await tokenHash(target.token!);
  const before=await ownerRead(ownerDb,id);
- await assertSucceeds(ownerAction(ownerDb,'owner',{action:'group',id:target.id,name:'Role class',leaderId:responsible.id,helperId:helper.id},id));
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'group',id:target.id,name:'Role class',l1:'Lehrerin A',l2:'Lehrer B'},id));
  const after=await ownerRead(ownerDb,id),group=after.state.groups.find(g=>g.id===target.id)!;
- assert.equal(group.helperId,helper.id);assert.equal(group.leaderId,responsible.id);assert.equal(after.state.students.length,2);
- assert.deepEqual(after.state.sessions.find(d=>d.date===past),before.state.sessions.find(d=>d.date===past));
- assert.ok(after.state.sessions.find(d=>d.date===future)!.roster.every(p=>p.group===target.id));
- assert.equal((await getDoc(doc(groupDb,'channels',hash))).data()!.group.helperId,undefined);
+ assert.equal(group.lehrer!.l1!.name,'Lehrerin A');assert.equal(group.lehrer!.l2!.name,'Lehrer B');
+ assert.notEqual(group.lehrer!.l1!.id,state.students[0].id);
+ assert.deepEqual(after.state.students,before.state.students);assert.deepEqual(after.state.sessions,before.state.sessions);
+ assert.equal(after.state.groups[0].leaderId,undefined);assert.equal(after.state.groups[0].helperId,undefined);
+ assert.equal((await getDoc(doc(groupDb,'channels',hash))).data()!.group.leader,'Lehrerin A');
  await assertFails(getDoc(doc(groupDb,'courses',id,'private','config')));
- await assertFails(updateDoc(doc(groupDb,'channels',hash),{'group.helperId':helper.id}));
- await assertFails(ownerAction(otherDb,'other-owner',{action:'group',id:target.id,name:'Hijack',leaderId:helper.id,helperId:responsible.id},id));
- await assert.rejects(ownerAction(ownerDb,'owner',{action:'group',id:target.id,name:'Invalid',leaderId:responsible.id,helperId:responsible.id},id),/verschiedene Schüler/);
- await ownerAction(ownerDb,'owner',{action:'renameStudent',id:helper.id,name:'Renamed helper'},id);
- assert.equal((await ownerRead(ownerDb,id)).state.students.find(p=>p.id===helper.id)!.name,'Renamed helper');
+ await assertFails(updateDoc(doc(groupDb,'channels',hash),{'group.lehrer':{l1:{id:'hijack',name:'Hijack'},l2:null}}));
+ await assertFails(ownerAction(otherDb,'other-owner',{action:'group',id:target.id,name:'Hijack',l1:'Hijack'},id));
+ await assert.rejects(ownerAction(ownerDb,'owner',{action:'group',id:target.id,name:'Invalid',l1:'Same',l2:'same'},id),/unterschiedliche Lehrer/);
+ await ownerAction(ownerDb,'owner',{action:'renameStudent',id:helper.id,name:'Renamed pupil'},id);
  await ownerAction(ownerDb,'owner',{action:'deleteStudent',id:helper.id},id);
- assert.equal((await ownerRead(ownerDb,id)).state.groups.find(g=>g.id===target.id)!.helperId,undefined);
+ const reloaded=(await ownerRead(ownerDb,id)).state.groups.find(g=>g.id===target.id)!;
+ assert.deepEqual(reloaded.lehrer,group.lehrer);
+ await ownerAction(ownerDb,'owner',{action:'group',id:target.id,name:'Renamed class',l1:'',l2:''},id);
+ assert.deepEqual((await ownerRead(ownerDb,id)).state.groups.find(g=>g.id===target.id)!.lehrer,{l1:null,l2:null});
 });
 
 test('confirmed edits immediately return the saved state and live listeners publish complete versions',async()=>{
@@ -362,7 +366,7 @@ test('confirmed edits immediately return the saved state and live listeners publ
   const actions=[
    {action:'addStudents',names:'New pupil',group:g.id},
    {action:'renameStudent',id:s.students[0].id,name:'Renamed responsible'},
-   {action:'group',id:g.id,name:'Renamed class',leaderId:s.students[0].id,helperId:s.students[1].id},
+   {action:'group',id:g.id,name:'Renamed class',l1:'Teacher A',l2:'Teacher B'},
    {action:'renameStudent',id:s.students[1].id,name:'Renamed helper'},
    {action:'rotate',id:g.id},
    {action:'group',name:'Additional class',leader:''},
