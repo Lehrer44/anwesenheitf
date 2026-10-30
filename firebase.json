@@ -7,7 +7,13 @@
     "providers": {
       "anonymous": true,
       "emailPassword": true
-    }
+    },
+    "authorizedDomains": [
+      "anwesenheitf.firebaseapp.com",
+      "anwesenheitf.web.app",
+      "lehrer44.github.io",
+      "localhost"
+    ]
   },
   "emulators": {
     "firestore": {
