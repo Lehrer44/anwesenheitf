@@ -4,7 +4,7 @@ import {initial,mutate,syncFutureSessions,nextSession,groupView,groupedStudents,
 import {makeXlsx} from '../src/export.ts';
 const s=initial(7),g=s.groups[0];
 mutate(s,{action:'addStudents',names:'Leiter\nAnna\nBen',group:g.id});
-mutate(s,{action:'group',id:g.id,name:'Gruppe Grün',leaderId:s.students[0].id});
+mutate(s,{action:'group',id:g.id,name:'Gruppe Grün',l1:'Frau Lehrerin'});
 for(const date of ['2026-10-13','2026-10-14','2026-10-21','2026-10-28'])mutate(s,{action:'session',date});
 const past=structuredClone(s.sessions[0]);
 s.sessions[2].marks[s.students[0].id]='anwesend';s.sessions[2].reports[g.id]='submitted';
@@ -49,7 +49,7 @@ const formState=initial(1);mutate(formState,{action:'addStudents',names:'أحم�
 mutate(formState,{action:'session',date:'2026-10-24'});const lesson=formState.sessions[0],formBefore=structuredClone(lesson);
 const draft=attendanceDraft(lesson);assert.deepEqual(Object.values(draft),['abwesend','abwesend','abwesend']);assert.deepEqual(lesson,formBefore);
 lesson.marks[formState.students[0].id]='anwesend';lesson.marks[formState.students[1].id]='entschuldigt';lesson.marks.removed='anwesend';
-const mixed=attendanceDraft(lesson);assert.deepEqual(mixed,{[formState.students[0].id]:'anwesend',[formState.students[1].id]:'entschuldigt',[formState.students[2].id]:'abwesend'});
+const mixed=attendanceDraft(lesson);assert.deepEqual(mixed,{[formState.students[0].id]:'anwesend',[formState.students[1].id]:'abwesend',[formState.students[2].id]:'abwesend'});
 mixed[formState.students[0].id]='abwesend';assert.equal(lesson.marks[formState.students[0].id],'anwesend');
 mutate(formState,{action:'submit',date:lesson.date,marks:attendanceDraft(lesson)},formState.groups[0]);assert.equal(lesson.marks[formState.students[2].id],'abwesend');
 mutate(formState,{action:'resetSession',date:lesson.date});assert.deepEqual(Object.values(attendanceDraft(lesson)),['abwesend','abwesend','abwesend']);

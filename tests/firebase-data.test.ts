@@ -71,10 +71,15 @@ mutate(removal,{action:'deleteGroup',id:keptClass.id});assert.equal(removal.grou
 mutate(removal,{action:'group',name:'Neue Klasse',leader:''});assert.equal(removal.groups.length,1);
 console.log('Class deletion checks passed: pupils and historical attendance preserved; links removed; group submissions cannot delete classes.');
 
-const helperState=initial(1);mutate(helperState,{action:'addStudents',names:'Leader\nHelper',group:helperState.groups[0].id});
-mutate(helperState,{action:'group',id:helperState.groups[0].id,name:'Roles',leaderId:helperState.students[0].id,helperId:helperState.students[1].id});
-const helperDocs=await documentsFor(helperState,'role-course','owner',0),helperHash=await tokenHash(helperState.groups[0].token!);
-assert.equal(helperDocs.get('courses/role-course/private/config').groups[0].helperId,helperState.students[1].id);
-assert.equal(helperDocs.get('channels/'+helperHash).group.helperId,undefined);
-assert.equal(helperDocs.get('channels/'+helperHash).group.token,undefined);
-console.log('Role document checks passed: helper selection persisted privately; public channel schema remains compatible.');
+
+const teachers=initial(1);mutate(teachers,{action:'addStudents',names:'Pupil',group:teachers.groups[0].id});
+mutate(teachers,{action:'group',id:teachers.groups[0].id,name:'Roles',l1:'Lehrerin A',l2:'Lehrer B'});
+const teacherDocs=await documentsFor(teachers,'role-course','owner',0),teacherHash=await tokenHash(teachers.groups[0].token!);
+assert.deepEqual(teacherDocs.get('courses/role-course/private/config').groups[0].lehrer,teachers.groups[0].lehrer);
+assert.equal(teacherDocs.get('courses/role-course/private/config').students.length,1);
+const channel=teacherDocs.get('channels/'+teacherHash);
+assert.deepEqual(Object.keys(channel.group).sort(),['id','leader','name']);
+assert.equal(channel.group.leader,'Lehrerin A');assert.equal(channel.students.length,1);
+const reloaded=JSON.parse(JSON.stringify(teacherDocs.get('courses/role-course/private/config')));
+assert.equal(reloaded.groups[0].lehrer.l2.name,'Lehrer B');
+console.log('Teacher document checks passed: separate private teacher records, reload and compatible public channel schema.');

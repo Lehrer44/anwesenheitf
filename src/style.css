@@ -327,3 +327,10 @@
  .preview-table th:first-child{width:104px}.preview-table th:last-child{width:32px}
  .preview-table th,.preview-table td{padding:8px 5px}.preview-table .cellstatus{font-size:12px}.preview-name{font-size:19px}
 }
+
+/* Separate teacher names remain readable alongside the class heading. */
+.overview-top{grid-template-columns:repeat(3,minmax(120px,.7fr)) minmax(260px,2fr)}
+.matrix.consolidated .group-divider .group-heading{flex-wrap:wrap}
+.class-teachers{overflow-wrap:anywhere;white-space:normal}
+@media(max-width:1100px){.overview-top{grid-template-columns:repeat(3,minmax(0,1fr))}.overview-top>.status-card{grid-column:1/-1}}
+@media(max-width:480px){.overview-top{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-top>.stat:nth-child(3){grid-column:1/-1}}
