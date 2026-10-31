@@ -3,7 +3,7 @@ import {signInAnonymously} from 'firebase/auth';
 import {createAccountAccess} from './account-auth';
 import {auth,db,configured} from './firebase';
 import {collection,doc,getDoc,getDocs,onSnapshot,query,runTransaction,serverTimestamp,where,writeBatch,type Unsubscribe} from 'firebase/firestore';
-import {initial,mutate,type State} from './model';
+import {initial,mutate,needsTeacherSync,type State} from './model';
 import {documentsFor,groupState,tokenHash,type Channel,type Lesson} from './firebase-data';
 export {configured};
 export type Access={course:string,token:string};
@@ -55,7 +55,9 @@ export async function courseRequest(body:any,access:Access):Promise<Data>{
   return await groupRead(access);
  }
  owner();if(!access.course)throw Error('Bitte einen Kurs auswählen.');
- const result=body?await ownerAction(services().db,owner(),body,access.course):await ownerRead(services().db,access.course);
+ let result=body?await ownerAction(services().db,owner(),body,access.course):await ownerRead(services().db,access.course);
+ // Publish existing L1/L2 assignments once so established class links can report them.
+ if(!body&&needsTeacherSync(result.state))result=await ownerAction(services().db,owner(),{action:'syncTeachers'},access.course);
  return {course:access.course,role:'admin',state:result.state,version:result.meta.version};
 }
 

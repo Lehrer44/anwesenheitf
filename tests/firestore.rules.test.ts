@@ -3,7 +3,7 @@ import {before,after,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {initializeTestEnvironment,assertFails,assertSucceeds,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
 import {collection,collectionGroup,doc,getDoc,getDocs,onSnapshot,query,serverTimestamp,setDoc,updateDoc,deleteDoc,where,writeBatch,Timestamp,type Firestore} from 'firebase/firestore';
-import {initial,mutate} from '../src/model.ts';
+import {initial,mutate,attendanceCounts,needsTeacherSync} from '../src/model.ts';
 import {documentsFor,tokenHash,type Lesson} from '../src/firebase-data.ts';
 import {ownerAction,ownerRead,watchOwnerCourse} from '../src/firebase-repository.ts';
 import {saveCourseLists} from '../src/firebase-course-management.ts';
@@ -332,7 +332,9 @@ test('existing rules persist teachers separately from pupils and protect private
  const after=await ownerRead(ownerDb,id),group=after.state.groups.find(g=>g.id===target.id)!;
  assert.equal(group.lehrer!.l1!.name,'Lehrerin A');assert.equal(group.lehrer!.l2!.name,'Lehrer B');
  assert.notEqual(group.lehrer!.l1!.id,state.students[0].id);
- assert.deepEqual(after.state.students,before.state.students);assert.deepEqual(after.state.sessions,before.state.sessions);
+ assert.deepEqual(after.state.students,before.state.students);
+ for(const d of after.state.sessions)assert.deepEqual(d.roster.filter(p=>!p.teacherId),before.state.sessions.find(x=>x.date===d.date)!.roster);
+ assert.ok(after.state.sessions.every(d=>d.roster.filter(p=>p.teacherId).length===2));
  assert.equal(after.state.groups[0].leaderId,undefined);assert.equal(after.state.groups[0].helperId,undefined);
  assert.equal((await getDoc(doc(groupDb,'channels',hash))).data()!.group.leader,'Lehrerin A');
  await assertFails(getDoc(doc(groupDb,'courses',id,'private','config')));
@@ -394,4 +396,38 @@ test('confirmed edits immediately return the saved state and live listeners publ
   assert.ok(seen.some(v=>v.meta.version===saved.meta.version&&v.state.groups.length===0));assert.deepEqual(errors,[]);
   for(const value of seen)assert.deepEqual(value.state,value.meta.version===saved.meta.version?saved.state:last.state);
  }finally{emptyStop();}
+});
+
+test('teacher attendance uses existing scoped lesson permissions and survives owner edits',async()=>{
+ const id='teacher-report-course',state=initial(2),[a,b]=state.groups,date='2099-05-01';
+ mutate(state,{action:'addStudents',names:'Pupil A',group:a.id});
+ mutate(state,{action:'addStudents',names:'Pupil B',group:b.id});
+ mutate(state,{action:'session',date});
+ // Simulate already saved L1/L2 settings with lessons from the previous app version.
+ mutate(state,{action:'group',id:a.id,name:a.name,l1:'Teacher A',l2:'Teacher B'});
+ mutate(state,{action:'group',id:b.id,name:b.name,l1:'Teacher A'});
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+ assert.equal(needsTeacherSync((await ownerRead(ownerDb,id)).state),true);
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'syncTeachers'},id));
+ assert.equal(needsTeacherSync((await ownerRead(ownerDb,id)).state),false);
+ const hash=await tokenHash(a.token!),otherHash=await tokenHash(b.token!);
+ const ref=doc(groupDb,'channels',hash,'lessons',date),otherRef=doc(groupDb,'channels',otherHash,'lessons',date);
+ const lesson=(await getDoc(ref)).data() as Lesson,otherLesson=(await getDoc(otherRef)).data() as Lesson;
+ const teacher=lesson.roster.find(p=>p.teacherRole==='L1')!,foreign=otherLesson.roster.find(p=>p.teacherId)!;
+ assert.equal(lesson.roster.filter(p=>p.teacherId).length,2);assert.notEqual(teacher.id,foreign.id);assert.equal(teacher.teacherId,foreign.teacherId);
+ const marks=Object.fromEntries(lesson.rosterIds.map(row=>[row,row===teacher.id?'anwesend':'abwesend']));
+ const incomplete={...marks};delete incomplete[teacher.id];
+ await assertFails(updateDoc(ref,{marks:incomplete,reportedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref,{marks:{...marks,[foreign.id]:'anwesend'},reportedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref,{roster:[],rosterIds:[],marks:{},reportedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(ref,{marks,reportedAt:serverTimestamp()}));
+ await assertFails(getDoc(doc(groupDb,'courses',id,'private','config')));
+ let loaded=await ownerRead(ownerDb,id);assert.deepEqual(attendanceCounts(loaded.state,loaded.state.sessions[0]).teachers,{present:1,total:2});
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'title',title:'Renamed course'},id));
+ loaded=await ownerRead(ownerDb,id);assert.equal(loaded.state.sessions[0].marks[teacher.id],'anwesend');
+ await ownerAction(ownerDb,'owner',{action:'group',id:a.id,name:a.name,l1:'Teacher C',l2:''},id);
+ await assertFails(updateDoc(ref,{marks,reportedAt:serverTimestamp()}));
+ loaded=await ownerRead(ownerDb,id);assert.equal(loaded.state.sessions[0].marks[teacher.id],undefined);assert.equal(loaded.state.sessions[0].marks[state.students[0].id],'abwesend');
+ assert.equal(loaded.state.sessions[0].reports[a.id],undefined);
+ assert.ok((await getDoc(ref)).data()!.roster.some((p:any)=>p.name==='Teacher C'));
 });

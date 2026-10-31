@@ -1,5 +1,5 @@
 import {sessionDates} from './calendar.ts';
-export type Student={id:string,name:string,group:string,archived?:boolean};
+export type Student={id:string,name:string,group:string,archived?:boolean,teacherId?:string,teacherRole?:'L1'|'L2'};
 export type Teacher={id:string,name:string};
 export type Group={id:string,name:string,leader:string,leaderId?:string,helperId?:string,leaderNeedsSelection?:boolean,token?:string,lehrer?:{l1:Teacher|null,l2:Teacher|null}};
 export type Status='anwesend'|'abwesend'|'entschuldigt';
@@ -22,9 +22,42 @@ export function normalizeLeaders(s:State){
 export function registeredTeachers(s:State):Teacher[]{
  return [...new Map(s.groups.flatMap(g=>[g.lehrer?.l1,g.lehrer?.l2]).filter((t):t is Teacher=>!!t).map(t=>[t.id,t])).values()];
 }
+// Teacher rows use class-specific IDs; one teacher can report in several classes.
+export const isTeacher=(p:Student)=>!!p.teacherId;
+export function teacherRoster(s:State):Student[]{
+ return s.groups.flatMap(g=>(['l1','l2'] as const).flatMap(role=>{
+  const t=g.lehrer?.[role];
+  return t?[{id:'teacher-'+g.id+'-'+t.id,name:t.name,group:g.id,teacherId:t.id,teacherRole:role==='l1'?'L1' as const:'L2' as const}]:[];
+ }));
+}
+function checkedRoster(roster:Student[]){if(roster.length>5000)throw Error('Maximal 5.000 Schüler und Lehrer pro Termin. Bitte den Kurs aufteilen.');return roster;}
+const currentRoster=(s:State)=>checkedRoster([...teacherRoster(s),...s.students.filter(p=>!p.archived).map(p=>({...p}))]);
 export function attendanceCounts(s:State,session?:Session){
- const roster=session?.roster||s.students.filter(p=>!p.archived);
- return {students:{present:session&&!session.cancelled?roster.filter(p=>session.marks[p.id]==='anwesend').length:0,total:roster.length},teachers:{present:0,total:registeredTeachers(s).length}};
+ const roster=session?.roster||currentRoster(s),pupils=roster.filter(p=>!isTeacher(p)),teachers=roster.filter(isTeacher);
+ const present=(p:Student)=>!!session&&!session.cancelled&&session.marks[p.id]==='anwesend';
+ return {students:{present:pupils.filter(present).length,total:pupils.length},teachers:{present:new Set(teachers.filter(present).map(p=>p.teacherId)).size,total:new Set(teachers.map(p=>p.teacherId)).size}};
+}
+// Backfill/refresh teachers in the two reportable past lessons and all future dates.
+// Pupil snapshots and older historical lessons stay intact.
+export function syncReportingTeachers(s:State,today=courseToday()){
+ const recent=new Set(classSessionChoices(s,today).map(d=>d.date)),teachers=teacherRoster(s);
+ for(const d of s.sessions.filter(d=>d.date>=today||recent.has(d.date))){
+  const roster=checkedRoster([...teachers.map(p=>({...p})),...d.roster.filter(p=>!isTeacher(p))]);
+  for(const g of s.groups){
+   const ids=(rows:Student[])=>rows.filter(p=>isTeacher(p)&&p.group===g.id).map(p=>p.id).sort().join(',');
+   if(ids(d.roster)!==ids(roster))delete d.reports[g.id];
+  }
+  const ids=new Set(roster.map(p=>p.id));
+  for(const p of d.roster.filter(isTeacher))if(!ids.has(p.id))delete d.marks[p.id];
+  d.roster=roster;
+ }
+}
+export function needsTeacherSync(s:State){
+ const next=structuredClone(s);syncReportingTeachers(next);
+ return s.sessions.some((d,i)=>d.roster.length!==next.sessions[i].roster.length||d.roster.some((p,j)=>{
+  const q=next.sessions[i].roster[j];
+  return p.id!==q.id||p.name!==q.name||p.group!==q.group||p.teacherId!==q.teacherId||p.teacherRole!==q.teacherRole;
+ }));
 }
 export const courseToday=(now=new Date())=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Berlin'}).format(now);
 export function nextSession(s:State,today=courseToday()){const dates=s.sessions.map(d=>d.date).sort();return dates.find(d=>d>=today)||dates.at(-1)||'';}
@@ -38,10 +71,10 @@ export function classSessionDate(s:Pick<State,'sessions'>,current='',today=cours
  return choices.filter(d=>d.date<=today).at(-1)?.date||'';
 }
 export function groupedStudents(s:State){return [...s.groups.map(g=>({id:g.id,name:displayClassName(g.name),students:s.students.filter(p=>p.group===g.id)})),{id:'',name:'Ohne Klasse',students:s.students.filter(p=>!s.groups.some(g=>g.id===p.group))}];}
-export function orderedRoster(s:State,roster:Student[]){const ranks=new Map(s.students.map((p,i)=>[p.id,i]));return [...roster].sort((a,b)=>(ranks.get(a.id)??Infinity)-(ranks.get(b.id)??Infinity));}
+export function orderedRoster(s:State,roster:Student[]){const ranks=new Map(s.students.map((p,i)=>[p.id,i]));return [...roster].sort((a,b)=>isTeacher(a)&&isTeacher(b)?(a.teacherRole||'').localeCompare(b.teacherRole||''):isTeacher(a)?-1:isTeacher(b)?1:(ranks.get(a.id)??Infinity)-(ranks.get(b.id)??Infinity));}
 // Keep today's and future lessons in step with enrollment. Past snapshots are immutable.
 export function syncFutureSessions(s:State,today=courseToday()){
- const active=s.students.filter(p=>!p.archived);
+ const active=currentRoster(s);
  for(const d of s.sessions.filter(d=>d.date>=today)){
   const old=new Map(d.roster.map(p=>[p.id,p]));const current=new Map(active.map(p=>[p.id,p]));
   for(const g of s.groups){const before=d.roster.filter(p=>p.group===g.id).map(p=>p.id).sort().join(',');const after=active.filter(p=>p.group===g.id).map(p=>p.id).sort().join(',');if(before!==after)delete d.reports[g.id];}
@@ -60,6 +93,7 @@ export function mutate(s:State,b:any,group?:Group):void {
   ids.forEach(id=>d.marks[id]=b.marks[id]);d.reports[group.id]=new Date().toISOString();return;
  }
  switch(b.action){
+ case 'syncTeachers':syncReportingTeachers(s);break;
  case 'editClassStudents':{
   // A stale editor must not overwrite another person's student changes.
   const current=groupedStudents(s).find(g=>g.id===b.group);
@@ -136,7 +170,7 @@ export function mutate(s:State,b:any,group?:Group):void {
   const dates=sessionDates(b.dates);
   if(s.sessions.length+dates.length>1000)throw Error('Maximal 1.000 Termine pro Liste.');
   if(dates.some(date=>s.sessions.some(d=>d.date===date)))throw Error('Ein ausgewählter Termin ist bereits angelegt. Bitte die Auswahl prüfen.');
-  const roster=s.students.filter(p=>!p.archived);if(!roster.length)throw Error('Bitte zuerst Schüler hinzufügen.');
+  const roster=currentRoster(s);if(!roster.length)throw Error('Bitte zuerst Schüler hinzufügen.');
   const additions=dates.map(date=>({date,cancelled:'',roster:roster.map(p=>({...p})),marks:{},reports:{}}));
   s.sessions=[...s.sessions,...additions].sort((a,b)=>a.date.localeCompare(b.date));break;}
  case 'deleteSessions':{
@@ -146,7 +180,7 @@ export function mutate(s:State,b:any,group?:Group):void {
  case 'session':{
   if(!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||new Date(b.date).toISOString().slice(0,10)!==b.date)throw Error('Bitte ein gültiges Datum wählen.');
   if(s.sessions.some(x=>x.date===b.date))throw Error('Dieser Termin ist bereits angelegt.');
-  const roster=s.students.filter(x=>!x.archived).map(x=>({...x}));if(!roster.length)throw Error('Bitte zuerst Schüler hinzufügen.');
+  const roster=currentRoster(s);if(!roster.length)throw Error('Bitte zuerst Schüler hinzufügen.');
   s.sessions.push({date:b.date,cancelled:'',roster,marks:{},reports:{}});s.sessions.sort((a,b)=>a.date.localeCompare(b.date));break;}
  case 'cancel':{const d=find();const reason=String(b.reason||'').trim().slice(0,200);if(!reason)throw Error('Bitte einen Ausfallgrund wählen.');d.cancelled=reason;break;}
  case 'restore':find().cancelled='';break;

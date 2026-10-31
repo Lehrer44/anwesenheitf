@@ -334,3 +334,11 @@
 .class-teachers{overflow-wrap:anywhere;white-space:normal}
 @media(max-width:1100px){.overview-top{grid-template-columns:repeat(3,minmax(0,1fr))}.overview-top>.status-card{grid-column:1/-1}}
 @media(max-width:480px){.overview-top{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-top>.stat:nth-child(3){grid-column:1/-1}}
+
+/* Teachers lead the checklist; pupil numbering starts at 01 below them. */
+.group-panel .checklist .teacher-row,.preview-table .teacher-row{background:#edf4f1}
+.group-panel .teacher-row .avatar{background:#d9e9e1;color:#255344;font-size:12px;font-weight:700}
+.group-panel .teacher-row .student-label,.preview-table .teacher-row .preview-name{font-weight:700!important}
+.group-panel .teacher-row+.checkrow:not(.teacher-row){border-top:2px solid #a9bfb2}
+.overview-top{grid-template-columns:minmax(130px,.7fr) minmax(130px,.7fr) minmax(260px,2fr)}
+@media(max-width:950px){.overview-top{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-top>.status-card{grid-column:1/-1}}

@@ -1,5 +1,5 @@
 import {useEffect,useRef} from 'react';
-import {displayClassName,orderedRoster,type State,type Session} from './model';
+import {displayClassName,isTeacher,orderedRoster,type State,type Session} from './model';
 
 export default function ClassAttendancePreview({state,session,groupId,onClose}:{state:State,session:Session,groupId:string,onClose:()=>void}){
  const panel=useRef<HTMLElement>(null),opener=useRef(document.activeElement as HTMLElement|null);
@@ -17,9 +17,9 @@ export default function ClassAttendancePreview({state,session,groupId,onClose}:{
   }}>
    <h2 id="class-preview-title" dir="auto">{name}</h2>
    <div className="preview-roster"><table className="preview-table"><thead><tr><th scope="col">Status</th><th scope="col">Name</th><th scope="col">Nr.</th></tr></thead>
-    <tbody>{pupils.map((p,i)=><tr key={p.id}>
+    <tbody>{pupils.map((p,i)=><tr className={isTeacher(p)?'teacher-row':undefined} key={p.id}>
      <td><span className={'cellstatus '+(session.marks[p.id]||'offen')}>{session.marks[p.id]||'Nicht gemeldet'}</span></td>
-     <td className="preview-name" dir="auto">{p.name}</td><td className="preview-number">{i+1}</td>
+     <td className="preview-name" dir="auto">{p.name}</td><td className="preview-number">{isTeacher(p)?p.teacherRole:pupils.slice(0,i+1).filter(x=>!isTeacher(x)).length}</td>
     </tr>)}</tbody>
    </table></div>
    <div className="modal-actions"><button type="button" className="btn" onClick={onClose}>Schließen</button></div>

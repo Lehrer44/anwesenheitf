@@ -4,7 +4,7 @@ import {initial,mutate,syncFutureSessions,nextSession,groupView,groupedStudents,
 import {makeXlsx} from '../src/export.ts';
 const s=initial(7),g=s.groups[0];
 mutate(s,{action:'addStudents',names:'Leiter\nAnna\nBen',group:g.id});
-mutate(s,{action:'group',id:g.id,name:'Gruppe Grün',l1:'Frau Lehrerin'});
+mutate(s,{action:'group',id:g.id,name:'Gruppe Grün'});
 for(const date of ['2026-10-13','2026-10-14','2026-10-21','2026-10-28'])mutate(s,{action:'session',date});
 const past=structuredClone(s.sessions[0]);
 s.sessions[2].marks[s.students[0].id]='anwesend';s.sessions[2].reports[g.id]='submitted';
