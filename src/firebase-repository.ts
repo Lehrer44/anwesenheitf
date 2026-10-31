@@ -1,5 +1,5 @@
 import {collection,doc,getDoc,getDocs,onSnapshot,onSnapshotsInSync,query,where,runTransaction,type Firestore,type Unsubscribe} from 'firebase/firestore';
-import {mutate,normalizeLeaders,syncFutureSessions,type State} from './model.ts';
+import {mutate,normalizeLeaders,syncFutureSessions,syncReportingTeachers,type State} from './model.ts';
 import {changesBetween,documentsFor,mergeLessons,tokenHash,type Course,type Lesson,type Documents} from './firebase-data.ts';
 export async function ownerRead(db:Firestore,course:string){
  const [meta,config,sessions]=await Promise.all([getDoc(doc(db,'courses',course)),getDoc(doc(db,'courses',course,'private','config')),getDocs(collection(db,'courses',course,'sessions'))]);
@@ -32,7 +32,7 @@ export async function ownerAction(db:Firestore,_uid:string,body:any,course:strin
     const config=before.get('courses/'+course+'/private/config');
     let state:State={...config,title:metadata.data()!.title,sessions:[...before].filter(([p])=>p.startsWith('courses/'+course+'/sessions/')).map(([,v])=>v).sort((a,b)=>a.date.localeCompare(b.date))};
     state=mergeLessons(state,[...before].filter(([p])=>p.startsWith('channels/')&&p.includes('/lessons/')).map(([,v])=>v));
-    normalizeLeaders(state);syncFutureSessions(state);mutate(state,body);syncFutureSessions(state);
+    normalizeLeaders(state);syncFutureSessions(state);mutate(state,body);syncFutureSessions(state);syncReportingTeachers(state);
     const after=await documentsFor(state,course,loaded.meta.ownerUid,loaded.meta.version+1),changes=changesBetween(before,after);
     const newPaths=changes.sets.map(([p])=>p).filter(p=>!before.has(p));
     await Promise.all(newPaths.map(p=>tx.get(doc(db,p))));

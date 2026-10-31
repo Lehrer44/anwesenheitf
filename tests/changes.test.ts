@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {initial,mutate,normalizeLeaders,groupView,registeredTeachers,attendanceCounts,attendanceDraft} from '../src/model.ts';
+import {initial,mutate,normalizeLeaders,groupView,registeredTeachers,attendanceCounts,attendanceDraft,syncReportingTeachers} from '../src/model.ts';
 import {courseChanges} from '../src/course-management.ts';
 import {isDate,monthDays,shiftMonth} from '../src/calendar.ts';
 
@@ -90,7 +90,7 @@ mutate(s,{action:'deleteGroup',id:other.id});assert.equal(registeredTeachers(s).
 // Counts include only the selected roster's present students, never stale marks.
 const day=s.sessions[0];day.marks={[anna.id]:'anwesend',[ben.id]:'abwesend',[clara.id]:'entschuldigt',removed:'anwesend'};
 assert.deepEqual(attendanceCounts(s,day),{students:{present:1,total:3},teachers:{present:0,total:0}});
-mutate(s,{action:'group',id:g.id,name:g.name,l1:'Lehrer A',l2:'Lehrer B'});assert.deepEqual(attendanceCounts(s,day).teachers,{present:0,total:2});
+mutate(s,{action:'group',id:g.id,name:g.name,l1:'Lehrer A',l2:'Lehrer B'});syncReportingTeachers(s);assert.deepEqual(attendanceCounts(s,day).teachers,{present:0,total:2});
 assert.equal(attendanceCounts(s).students.total,2);assert.equal(attendanceCounts(s).students.present,0);
 day.cancelled='Ausfall';assert.equal(attendanceCounts(s,day).students.present,0);day.cancelled='';
 const saved=structuredClone(day);assert.equal(attendanceDraft(day)[clara.id],'abwesend');assert.deepEqual(day,saved);
