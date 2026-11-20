@@ -13,6 +13,8 @@ service cloud.firestore {
   //   title, group (no token), students<=5000, active:bool. Never enumerate.
   // channels/{hash}/lessons/{date}: ownerUid, courseId, groupId, date,
   //   cancelled, roster, rosterIds, marks, reportedAt:timestamp|null.
+  // channels/{hash}/classbook/{date}: ownerUid, courseId, groupId, date,
+  //   quran, bildung, arabisch (<=2000 each, at least one), updatedAt:timestamp.
   // Groups can only replace their own complete marks + server timestamp.
   // A channel path is a bearer credential, just like the existing secret link.
   function signed() { return request.auth != null; }
@@ -79,6 +81,14 @@ service cloud.firestore {
     && marks(d.marks) && d.marks.keys().hasOnly(d.rosterIds)
     && (d.reportedAt==null || (d.reportedAt is timestamp && d.reportedAt<=request.time));
   }
+  function validClassBook(d,day) {
+   return d.keys().hasAll(['ownerUid','courseId','groupId','date','quran','bildung','arabisch','updatedAt'])
+    && d.keys().hasOnly(['ownerUid','courseId','groupId','date','quran','bildung','arabisch','updatedAt'])
+    && id(d.ownerUid) && id(d.courseId) && id(d.groupId) && date(day) && d.date==day
+    && text(d.quran,2000) && text(d.bildung,2000) && text(d.arabisch,2000)
+    && (d.quran.size()>0 || d.bildung.size()>0 || d.arabisch.size()>0)
+    && d.updatedAt is timestamp && d.updatedAt<=request.time;
+  }
   function activeChannel(hash) {
    let parent=get(/databases/$(database)/documents/channels/$(hash));
    return signed() && parent.data.active==true
@@ -131,6 +141,17 @@ service cloud.firestore {
       && request.resource.data.marks.keys().hasAll(resource.data.rosterIds)
       && request.resource.data.reportedAt==request.time));
     allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
+   }
+   // Class links write their own entries; owners only move or remove them with the class.
+   match /classbook/{day} {
+    allow read: if (approvedAccount() && (resource==null || manages(resource.data.ownerUid))) || activeChannel(hash);
+    allow create: if validClassBook(request.resource.data,day) && boundToChannel(request.resource.data,hash) && (
+     (activeChannel(hash) && request.resource.data.updatedAt==request.time)
+     || (manages(request.resource.data.ownerUid) && ownerAfter(request.resource.data.courseId)));
+    allow update: if activeChannel(hash) && validClassBook(request.resource.data,day)
+     && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId','groupId','date'])
+     && request.resource.data.updatedAt==request.time;
+    allow delete: if activeChannel(hash) || (manages(resource.data.ownerUid) && owner(resource.data.courseId));
    }
   }
   match /{document=**} { allow read,write: if false; }

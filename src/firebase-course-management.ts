@@ -2,6 +2,7 @@ import {doc,runTransaction,type Firestore} from 'firebase/firestore';
 import {initial} from './model.ts';
 import {documentsFor,changesBetween,type Documents} from './firebase-data.ts';
 import {ownerRead} from './firebase-repository.ts';
+import {loadClassBooks} from './firebase-classbook.ts';
 import {courseChanges,type CourseChoice,type CourseEdit} from './course-management.ts';
 
 export async function saveCourseLists(db:Firestore,uid:string,original:CourseChoice[],rows:CourseEdit[]){
@@ -10,7 +11,10 @@ export async function saveCourseLists(db:Firestore,uid:string,original:CourseCho
  }));
  const affected=[...plan.renamed.map(c=>({id:c.id,title:c.previousTitle})),...plan.deleted];
  for(let attempt=0;attempt<4;attempt++){
-  const loaded=await Promise.all(affected.map(async c=>{const value=await ownerRead(db,c.id);if(value.meta.title!==c.title)throw Error('Die Listen wurden zwischenzeitlich geändert. Bitte den Dialog schließen und erneut öffnen.');return {id:c.id,...value};}));
+  const loaded=await Promise.all(affected.map(async c=>{const value=await ownerRead(db,c.id);if(value.meta.title!==c.title)throw Error('Die Listen wurden zwischenzeitlich geändert. Bitte den Dialog schließen und erneut öffnen.');
+   // A deleted list also removes its class book; renamed lists keep entries untouched.
+   if(plan.deleted.some(d=>d.id===c.id))for(const [path,data] of await loadClassBooks(db,value.state.groups.map(g=>g.token!),value.meta.ownerUid))value.docs.set(path,data);
+   return {id:c.id,...value};}));
   try{
    await runTransaction(db,async tx=>{
     // Missing course roots are deliberately unreadable; create rules reject ID collisions.
