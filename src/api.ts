@@ -11,6 +11,9 @@ export type Data={course:string,role:'admin'|'group',state:State,version:number}
 export type {CourseChoice} from './course-management';
 import type {CourseChoice,CourseEdit} from './course-management';
 import {saveCourseLists} from './firebase-course-management';
+import {watchClassBook,writeClassBookEntry} from './firebase-classbook';
+import type {ClassBookEntry,ClassBookInput} from './classbook';
+export type {ClassBookEntry} from './classbook';
 export async function manageCourseLists(original:CourseChoice[],rows:CourseEdit[]){return saveCourseLists(services().db,owner(),original,rows);}
 function services(){if(!db||!auth)throw Error('Firebase ist noch nicht eingerichtet.');return {db,auth};}
 const accounts=createAccountAccess(auth,{continueUrl:typeof location==='undefined'?undefined:location.origin+location.pathname});
@@ -76,4 +79,21 @@ export async function watchCourse(access:Access,onChange:(data:Data)=>void,onErr
   owner();stops.push(watchOwnerCourse(db,access.course,({state,meta})=>{if(!stopped)onChange({course:access.course,role:'admin',state,version:meta.version});},fail));
  }
  return ()=>{stopped=true;stops.forEach(stop=>stop());};
+}
+
+// Class book: the class link writes entries; the course owner reads them per class.
+export async function watchClassEntries(access:Access,groupToken:string,onChange:(entries:ClassBookEntry[])=>void,onError:(error:Error)=>void):Promise<Unsubscribe>{
+ const {db}=services();
+ if(access.token){await groupUser();return watchClassBook(db,await tokenHash(access.token),null,onChange,onError);}
+ owner();const hash=await tokenHash(groupToken),channel=await getDoc(doc(db,'channels',hash));
+ if(!channel.exists())throw Error('Für diese Klasse ist noch kein Klassenbuch vorhanden.');
+ return watchClassBook(db,hash,channel.data().ownerUid,onChange,onError);
+}
+export async function saveClassEntry(access:Access,entry:ClassBookInput,expected:string|null){
+ if(!access.token)throw Error('Einträge werden über den Klassenlink geschrieben.');
+ await groupUser();await writeClassBookEntry(services().db,await tokenHash(access.token),entry,expected);
+}
+export async function deleteClassEntry(access:Access,date:string,expected:string|null){
+ if(!access.token)throw Error('Einträge werden über den Klassenlink gelöscht.');
+ await groupUser();await writeClassBookEntry(services().db,await tokenHash(access.token),{date,delete:true},expected);
 }

@@ -1,6 +1,9 @@
 import {collection,doc,getDoc,getDocs,onSnapshot,onSnapshotsInSync,query,where,runTransaction,type Firestore,type Unsubscribe} from 'firebase/firestore';
 import {mutate,normalizeLeaders,syncFutureSessions,syncReportingTeachers,type State} from './model.ts';
 import {changesBetween,documentsFor,mergeLessons,tokenHash,type Course,type Lesson,type Documents} from './firebase-data.ts';
+import {carryClassBooks,loadClassBooks} from './firebase-classbook.ts';
+// Only these actions create, renew or remove class links and therefore move class book entries.
+const channelActions=new Set(['rotate','deleteGroup','groupCount']);
 export async function ownerRead(db:Firestore,course:string){
  const [meta,config,sessions]=await Promise.all([getDoc(doc(db,'courses',course)),getDoc(doc(db,'courses',course,'private','config')),getDocs(collection(db,'courses',course,'sessions'))]);
  if(!meta.exists()||!config.exists())throw Error('Kurs nicht gefunden.');
@@ -20,12 +23,13 @@ export async function ownerRead(db:Firestore,course:string){
 export async function ownerAction(db:Firestore,_uid:string,body:any,course:string){
  for(let attempt=0;attempt<4;attempt++){
   const loaded=await ownerRead(db,course);
+  const books=channelActions.has(body?.action)?await loadClassBooks(db,loaded.state.groups.map(g=>g.token!),loaded.meta.ownerUid):new Map();
   try{
    return await runTransaction(db,async tx=>{
     const metadata=await tx.get(doc(db,'courses',course));
     if(metadata.data()?.version!==loaded.meta.version)throw Error('COURSE_CHANGED');
     // These transaction reads protect concurrent group reports from lost updates.
-    const paths=[...loaded.docs.keys()].filter(p=>p!=='courses/'+course);
+    const paths=[...loaded.docs.keys(),...books.keys()].filter(p=>p!=='courses/'+course);
     const snapshots=await Promise.all(paths.map(path=>tx.get(doc(db,path))));
     const before:Documents=new Map([['courses/'+course,metadata.data()]]);
     snapshots.forEach(s=>{if(s.exists())before.set(s.ref.path,s.data());});
@@ -33,7 +37,9 @@ export async function ownerAction(db:Firestore,_uid:string,body:any,course:strin
     let state:State={...config,title:metadata.data()!.title,sessions:[...before].filter(([p])=>p.startsWith('courses/'+course+'/sessions/')).map(([,v])=>v).sort((a,b)=>a.date.localeCompare(b.date))};
     state=mergeLessons(state,[...before].filter(([p])=>p.startsWith('channels/')&&p.includes('/lessons/')).map(([,v])=>v));
     normalizeLeaders(state);syncFutureSessions(state);mutate(state,body);syncFutureSessions(state);syncReportingTeachers(state);
-    const after=await documentsFor(state,course,loaded.meta.ownerUid,loaded.meta.version+1),changes=changesBetween(before,after);
+    const after=await documentsFor(state,course,loaded.meta.ownerUid,loaded.meta.version+1);
+    carryClassBooks(new Map([...before].filter(([p])=>books.has(p))),after,body.action==='deleteGroup');
+    const changes=changesBetween(before,after);
     const newPaths=changes.sets.map(([p])=>p).filter(p=>!before.has(p));
     await Promise.all(newPaths.map(p=>tx.get(doc(db,p))));
     for(const path of changes.deletes)tx.delete(doc(db,path));

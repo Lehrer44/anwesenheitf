@@ -342,3 +342,55 @@
 .group-panel .teacher-row+.checkrow:not(.teacher-row){border-top:2px solid #a9bfb2}
 .overview-top{grid-template-columns:minmax(130px,.7fr) minmax(130px,.7fr) minmax(260px,2fr)}
 @media(max-width:950px){.overview-top{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-top>.status-card{grid-column:1/-1}}
+
+/* Class book: entry form and collapsible list in the class link view. */
+.group-panel .classbook-actions{display:flex;gap:6px;margin-left:auto;flex-shrink:0}
+.group-panel .classbook-actions .btn{min-height:36px;min-width:40px;padding:7px 9px}
+.classbook-modal{width:560px;outline:none;color:#253d3a}
+.classbook-modal h2{margin-bottom:14px}
+.classbook-field{margin:0 -31px;padding:12px 31px 14px;border-top:1px solid #d7e2dc}
+.classbook-field:nth-of-type(even){background:#edf3f0}
+.modal .classbook-label,.classbook-label{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:15px;font-weight:600;color:#253d3a}
+.classbook-field textarea{display:block;font-size:15px;line-height:1.5;color:#253d3a;min-height:72px;background:#fff;border-color:#b9cbc1}
+.classbook-date{display:flex;gap:8px;align-items:stretch}
+.classbook-date-value{flex:1;min-height:42px;border:1px solid #b9cbc1;border-radius:7px;background:#fff;color:#253d3a;font-size:15px;text-align:left;padding:8px 12px}
+.classbook-date-value:hover{background:#f4f8f5}
+.classbook-calendar-button{flex-shrink:0;padding:8px 10px;color:#286b54}
+.classbook-picker{margin-top:12px;padding:12px;border:1px solid #d7e2dc;border-radius:10px;background:#fff}
+.classbook-picker .calendar-toolbar{justify-content:space-between;margin-bottom:8px}
+.classbook-month{font-size:14px;text-transform:capitalize}
+.calendar-day.has-entry{position:relative;font-weight:700}
+.calendar-day.has-entry::after{content:'';position:absolute;left:50%;bottom:4px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#286b54}
+.calendar-day.has-entry.selected::after{background:#fff}
+.classbook-picker .calendar-legend{font-size:11px;color:#81948a;margin-top:8px}
+.classbook-existing{margin:0 -31px;padding:8px 31px;font-size:12px!important;line-height:1.5!important;color:#7a5f1f!important;background:#fcf5e8;border-top:1px solid #efe1c1}
+.subject-icon{display:inline-grid;place-items:center;width:26px;height:24px;flex-shrink:0;color:#286b54}
+.subject-icon span{font-size:22px;line-height:1;font-weight:700;font-family:'Traditional Arabic','Amiri','Noto Naskh Arabic',serif;margin-top:-4px}
+.classbook-delete{margin-right:auto}
+.classbook-editor .hint{margin-top:10px}
+.classbook-subtitle{font-size:13px;color:#5f7a6d;margin:-8px 0 14px}
+.classbook-empty{padding:30px 0;text-align:center;font-size:13px;color:#81948a}
+.classbook-entries{list-style:none;margin:0 -31px;padding:0;border-bottom:1px solid #b9cbc1}
+.classbook-entries li{border-top:1px solid #b9cbc1}
+.classbook-entries li:nth-child(odd){background:#edf3f0}
+.classbook-row{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:10px 31px;background:transparent;color:#253d3a;text-align:left;font-size:15px}
+.classbook-row:hover{background:#e2ece6}
+.classbook-row strong{min-width:120px;font-weight:700}
+.classbook-row-subjects{display:flex;gap:2px;opacity:.7}
+.classbook-chevron{margin-left:auto;flex-shrink:0;transition:transform .15s}
+.expanded .classbook-chevron{transform:rotate(180deg)}
+.classbook-detail{display:flex;flex-direction:column;gap:6px;padding:0 31px 14px}
+.classbook-subject{display:grid;grid-template-columns:minmax(150px,auto) 1fr;gap:4px 12px;align-items:start;background:#fff;border:1px solid #d7e2dc;border-radius:8px;padding:8px 10px}
+.classbook-subject-name{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#4f6f60}
+.classbook-subject p{font-size:15px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;color:#253d3a}
+.classbook-edit{align-self:flex-end;font-size:13px;margin-top:2px}
+@media(max-width:760px){
+ .modal-backdrop:has(.classbook-modal){padding:10px}
+ .classbook-modal{padding:22px 16px}
+ .classbook-field,.classbook-existing{margin:0 -16px;padding-left:16px;padding-right:16px}
+ .classbook-entries{margin:0 -16px}.classbook-row{padding:10px 16px}.classbook-detail{padding:0 16px 12px}
+ .classbook-subject{grid-template-columns:1fr}
+ .classbook-modal .modal-actions{flex-wrap:wrap}.classbook-modal .modal-actions .btn{flex:1}
+ .group-panel .classbook-actions .btn{min-width:42px;min-height:42px}
+}
+.modal form>p.classbook-existing{margin-bottom:0}
