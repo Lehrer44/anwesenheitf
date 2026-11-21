@@ -53,7 +53,7 @@ async function groupRead(access:Access):Promise<Data>{
 export async function courseRequest(body:any,access:Access):Promise<Data>{
  if(access.token){
   if(body){
-   if(body.action!=='submit'&&body.action!=='submitTeachers')throw Error('Nur die eigene Klassenmeldung ist erlaubt.');
+   if(body.action!=='submit')throw Error('Nur die eigene Klassenmeldung ist erlaubt.');
    await groupUser();const {db}=services(),hash=await tokenHash(access.token);
    await runTransaction(db,async tx=>{
     const parent=await tx.get(doc(db,'channels',hash));
@@ -61,8 +61,7 @@ export async function courseRequest(body:any,access:Access):Promise<Data>{
     const ref=doc(db,'channels',hash,'lessons',String(body.date)),snap=await tx.get(ref);
     if(!snap.exists())throw Error('Termin nicht gefunden.');
     const channel=parent.data() as Channel,state=groupState(channel,[snap.data() as Lesson]);mutate(state,body,state.groups[0]);
-    // Teacher self-reports keep the class report time; the rules allow marks-only updates.
-    tx.update(ref,body.action==='submit'?{marks:state.sessions[0].marks,reportedAt:serverTimestamp()}:{marks:state.sessions[0].marks});
+    tx.update(ref,{marks:state.sessions[0].marks,reportedAt:serverTimestamp()});
    });
   }
   return await groupRead(access);
