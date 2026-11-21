@@ -4,7 +4,9 @@ export type Teacher={id:string,name:string};
 export type Group={id:string,name:string,leader:string,leaderId?:string,helperId?:string,leaderNeedsSelection?:boolean,token?:string,lehrer?:{l1:Teacher|null,l2:Teacher|null}};
 export type Status='anwesend'|'abwesend'|'entschuldigt';
 export type Session={date:string,cancelled:string,roster:Student[],marks:Record<string,Status>,reports:Record<string,string>};
-export type State={demo?:boolean,title:string,students:Student[],groups:Group[],sessions:Session[]};
+// teachers: the course's central teacher list; school: secret tokens of the shared school link and the teacher list.
+export type School={portal:string,staff:string};
+export type State={demo?:boolean,title:string,students:Student[],groups:Group[],sessions:Session[],teachers?:Teacher[],school?:School};
 // Defaults are local form values; a class must explicitly submit before anything is saved.
 export function attendanceDraft(session?:Session):Record<string,Status>{
  if(!session||session.cancelled)return {};
@@ -13,22 +15,24 @@ export function attendanceDraft(session?:Session):Record<string,Status>{
 export const displayClassName=(name:string)=>name.replace(/^Gruppe(?=\s|$)/,'Klasse');
 function checkedGroupCount(count:number){if(!Number.isInteger(count)||count<0||count>30)throw Error('Bitte eine ganze Klassenanzahl von 0 bis 30 wählen.');return count;}
 const newGroup=(index:number):Group=>({id:crypto.randomUUID(),name:`Klasse ${index+1}`,leader:'',token:crypto.randomUUID()+crypto.randomUUID()});
-export function initial(groupCount=0):State{return {title:'Mein Wochenkurs',students:[],groups:Array.from({length:checkedGroupCount(groupCount)},(_,i)=>newGroup(i)),sessions:[]};}
+const newToken=()=>crypto.randomUUID()+crypto.randomUUID();
+const newSchool=():School=>({portal:newToken(),staff:newToken()});
+export function initial(groupCount=0):State{return {title:'Mein Wochenkurs',students:[],groups:Array.from({length:checkedGroupCount(groupCount)},(_,i)=>newGroup(i)),sessions:[],teachers:[],school:newSchool()};}
 const nameKey=(name:string)=>name.trim().normalize('NFKC').toLocaleLowerCase('de');
 // Retire student roles without converting pupils into teachers or changing history.
+// Also creates the central teacher list (from existing L1/L2) and the school link once.
 export function normalizeLeaders(s:State){
  for(const g of s.groups){g.leader='';delete g.leaderId;delete g.helperId;delete g.leaderNeedsSelection;}
+ if(!s.teachers)s.teachers=assignedTeachers(s);
+ if(!s.school)s.school=newSchool();
 }
-export function registeredTeachers(s:State):Teacher[]{
- return [...new Map(s.groups.flatMap(g=>[g.lehrer?.l1,g.lehrer?.l2]).filter((t):t is Teacher=>!!t).map(t=>[t.id,t])).values()];
-}
-// Teacher rows use class-specific IDs; one teacher can report in several classes.
+const assignedTeachers=(s:State)=>[...new Map(s.groups.flatMap(g=>[g.lehrer?.l1,g.lehrer?.l2]).filter((t):t is Teacher=>!!t).map(t=>[t.id,{id:t.id,name:t.name}])).values()];
+export function registeredTeachers(s:State):Teacher[]{return s.teachers||assignedTeachers(s);}
 export const isTeacher=(p:Student)=>!!p.teacherId;
+// One central row per teacher: every teacher can report in any class, and counts once.
+export const teacherRowId=(teacherId:string)=>'teacher-'+teacherId;
 export function teacherRoster(s:State):Student[]{
- return s.groups.flatMap(g=>(['l1','l2'] as const).flatMap(role=>{
-  const t=g.lehrer?.[role];
-  return t?[{id:'teacher-'+g.id+'-'+t.id,name:t.name,group:g.id,teacherId:t.id,teacherRole:role==='l1'?'L1' as const:'L2' as const}]:[];
- }));
+ return registeredTeachers(s).map(t=>({id:teacherRowId(t.id),name:t.name,group:'',teacherId:t.id}));
 }
 function checkedRoster(roster:Student[]){if(roster.length>5000)throw Error('Maximal 5.000 Schüler und Lehrer pro Termin. Bitte den Kurs aufteilen.');return roster;}
 const currentRoster=(s:State)=>checkedRoster([...teacherRoster(s),...s.students.filter(p=>!p.archived).map(p=>({...p}))]);
@@ -39,20 +43,23 @@ export function attendanceCounts(s:State,session?:Session){
 }
 // Backfill/refresh teachers in the two reportable past lessons and all future dates.
 // Pupil snapshots and older historical lessons stay intact.
+// Carry a presence from former per-class teacher rows to the central row of that teacher.
+function carryTeacherMarks(d:Session,teachers:Student[]){
+ for(const p of teachers)if(!d.marks[p.id]&&d.roster.some(x=>x.teacherId===p.teacherId&&d.marks[x.id]==='anwesend'))d.marks[p.id]='anwesend';
+}
+// Teacher attendance is no longer part of a class report, so class reports stay untouched.
 export function syncReportingTeachers(s:State,today=courseToday()){
  const recent=new Set(classSessionChoices(s,today).map(d=>d.date)),teachers=teacherRoster(s);
  for(const d of s.sessions.filter(d=>d.date>=today||recent.has(d.date))){
   const roster=checkedRoster([...teachers.map(p=>({...p})),...d.roster.filter(p=>!isTeacher(p))]);
-  for(const g of s.groups){
-   const ids=(rows:Student[])=>rows.filter(p=>isTeacher(p)&&p.group===g.id).map(p=>p.id).sort().join(',');
-   if(ids(d.roster)!==ids(roster))delete d.reports[g.id];
-  }
+  carryTeacherMarks(d,teachers);
   const ids=new Set(roster.map(p=>p.id));
   for(const p of d.roster.filter(isTeacher))if(!ids.has(p.id))delete d.marks[p.id];
   d.roster=roster;
  }
 }
 export function needsTeacherSync(s:State){
+ if(!s.teachers||!s.school)return true;
  const next=structuredClone(s);syncReportingTeachers(next);
  return s.sessions.some((d,i)=>d.roster.length!==next.sessions[i].roster.length||d.roster.some((p,j)=>{
   const q=next.sessions[i].roster[j];
@@ -77,7 +84,10 @@ export function syncFutureSessions(s:State,today=courseToday()){
  const active=currentRoster(s);
  for(const d of s.sessions.filter(d=>d.date>=today)){
   const old=new Map(d.roster.map(p=>[p.id,p]));const current=new Map(active.map(p=>[p.id,p]));
-  for(const g of s.groups){const before=d.roster.filter(p=>p.group===g.id).map(p=>p.id).sort().join(',');const after=active.filter(p=>p.group===g.id).map(p=>p.id).sort().join(',');if(before!==after)delete d.reports[g.id];}
+  // Class reports cover pupils only, so teacher changes never reopen them.
+  const pupils=(rows:Student[],g:Group)=>rows.filter(p=>p.group===g.id&&!isTeacher(p)).map(p=>p.id).sort().join(',');
+  for(const g of s.groups)if(pupils(d.roster,g)!==pupils(active,g))delete d.reports[g.id];
+  carryTeacherMarks(d,active.filter(isTeacher));
   for(const id of Object.keys(d.marks)){if(!current.has(id)||old.get(id)?.group!==current.get(id)?.group)delete d.marks[id];}
   d.roster=active.map(p=>({...p}));
  }
@@ -85,26 +95,36 @@ export function syncFutureSessions(s:State,today=courseToday()){
 export function mutate(s:State,b:any,group?:Group):void {
  const find=()=>{const d=s.sessions.find(x=>x.date===b.date);if(!d)throw Error('Termin nicht gefunden.');return d;};
  if(group){
-  if(b.action!=='submit'&&b.action!=='submitTeachers')throw Error('Nur die eigene Klassenmeldung ist erlaubt.');
+  if(b.action!=='submit')throw Error('Nur die eigene Klassenmeldung ist erlaubt.');
   const d=find();if(d.cancelled)throw Error('Dieser Unterricht fällt aus.');
-  const rows=d.roster.filter(x=>x.group===group.id),pupils=rows.filter(p=>!isTeacher(p)).map(p=>p.id),teachers=rows.filter(isTeacher).map(p=>p.id);
-  const valid=(id:string)=>['anwesend','abwesend'].includes(b.marks?.[id]);
-  const known=new Set(rows.map(p=>p.id)),sent=b.marks&&typeof b.marks==='object'?Object.keys(b.marks):[];
-  if(b.action==='submitTeachers'){
-   // Teachers mark themselves separately; the class report status stays unchanged.
-   if(!teachers.length)throw Error('Für diese Klasse sind keine Lehrer eingetragen.');
-   if(sent.length!==teachers.length||teachers.some(id=>!valid(id)))throw Error('Bitte für jeden Lehrer einen Status wählen.');
-   teachers.forEach(id=>d.marks[id]=b.marks[id]);return;
-  }
-  if(!pupils.length)throw Error('Für diese Klasse sind keine Schüler zugeteilt.');
-  if(sent.some(id=>!known.has(id))||pupils.some(id=>!valid(id))||teachers.some(id=>id in b.marks&&!valid(id)))throw Error('Bitte für jeden Schüler einen Status wählen.');
-  // Unreported teachers count as absent; a teacher's own earlier report is kept.
-  pupils.forEach(id=>d.marks[id]=b.marks[id]);
-  teachers.forEach(id=>d.marks[id]=id in b.marks?b.marks[id]:d.marks[id]==='anwesend'?'anwesend':'abwesend');
-  d.reports[group.id]=new Date().toISOString();return;
+  // Class reports contain pupils only; teachers use the central teacher list.
+  const ids=d.roster.filter(x=>x.group===group.id&&!isTeacher(x)).map(x=>x.id);
+  if(!ids.length)throw Error('Für diese Klasse sind keine Schüler zugeteilt.');
+  // Teacher entries in a submitted draft are ignored; any other foreign entry is rejected.
+  if(!b.marks||Object.keys(b.marks).some(id=>!ids.includes(id)&&!id.startsWith('teacher-'))||ids.some(id=>!['anwesend','abwesend'].includes(b.marks[id])))throw Error('Bitte für jeden Schüler einen Status wählen.');
+  ids.forEach(id=>d.marks[id]=b.marks[id]);d.reports[group.id]=new Date().toISOString();return;
  }
  switch(b.action){
  case 'syncTeachers':syncReportingTeachers(s);break;
+ case 'editTeachers':{
+  // Like the class editor: a stale dialog must not overwrite another person's changes.
+  const current=registeredTeachers(s);
+  if(!Array.isArray(b.original)||!Array.isArray(b.teachers)||b.teachers.length>300)throw Error('Ungültige Lehrerliste (höchstens 300 Lehrer).');
+  if(current.length!==b.original.length||current.some((t,i)=>t.id!==b.original[i]?.id||t.name!==b.original[i]?.name))throw Error('Die Lehrerliste wurde zwischenzeitlich geändert. Bitte den Dialog schließen und erneut öffnen.');
+  const ids=new Set<string>(),names=new Set<string>(),next:Teacher[]=[];
+  for(const row of b.teachers){
+   const name=typeof row?.name==='string'?row.name.trim():'';
+   if(!name||name.length>150)throw Error('Bitte Lehrernamen mit 1 bis 150 Zeichen eingeben.');
+   if(names.has(nameKey(name)))throw Error(`„${name}“ steht doppelt in der Liste.`);names.add(nameKey(name));
+   if(row.id!==undefined){if(typeof row.id!=='string'||ids.has(row.id)||!current.some(t=>t.id===row.id))throw Error('Ungültige Lehrerliste.');ids.add(row.id);next.push({id:row.id,name});}
+   else next.push({id:crypto.randomUUID(),name});
+  }
+  s.teachers=next;
+  // Renames and removals also apply to the L1/L2 assignments.
+  const byId=new Map(next.map(t=>[t.id,t]));
+  for(const g of s.groups)if(g.lehrer)g.lehrer={l1:g.lehrer.l1&&byId.get(g.lehrer.l1.id)||null,l2:g.lehrer.l2&&byId.get(g.lehrer.l2.id)||null};
+  break;}
+ case 'rotateSchool':s.school=newSchool();break;
  case 'editClassStudents':{
   // A stale editor must not overwrite another person's student changes.
   const current=groupedStudents(s).find(g=>g.id===b.group);
@@ -171,8 +191,10 @@ export function mutate(s:State,b:any,group?:Group):void {
   if(names.some(n=>typeof n!=='string'||n.trim().length>150))throw Error('Bitte Lehrernamen mit höchstens 150 Zeichen eingeben.');
   const [l1,l2]=names.map(n=>n.trim());
   if(l1&&l2&&nameKey(l1)===nameKey(l2))throw Error('L1 und L2 müssen unterschiedliche Lehrer sein.');
-  const teachers=registeredTeachers(s);
-  const teacher=(name:string):Teacher|null=>name?teachers.find(t=>nameKey(t.name)===nameKey(name))||{id:crypto.randomUUID(),name}:null;
+  // L1/L2 come from the central list; a new name is added to it.
+  if(!s.teachers)s.teachers=assignedTeachers(s);
+  const teachers=s.teachers;
+  const teacher=(name:string):Teacher|null=>{if(!name)return null;let t=teachers.find(t=>nameKey(t.name)===nameKey(name));if(!t){t={id:crypto.randomUUID(),name};teachers.push(t);}return {...t};};
   g.lehrer={l1:teacher(l1),l2:teacher(l2)};
   g.leader='';delete g.leaderId;delete g.helperId;delete g.leaderNeedsSelection;
   g.name=name;if(isNew)s.groups.push(g);break;}

@@ -30,9 +30,17 @@ Pro Klasse und Tag gibt es genau einen Eintrag. Wird ein Tag mit vorhandenem Ein
 
 Die Kursleitung sieht unter **Links** über **Klassenbuch** die Einträge jeder Klasse nur lesend. Gespeichert wird unter `channels/{hash}/classbook/{datum}`. Beim **Link erneuern** wandern die Einträge in derselben Transaktion zum neuen Link; der alte Link verliert sofort den Zugriff. **Klasse löschen** und das Löschen einer Liste entfernen auch das zugehörige Klassenbuch. Eine automatische Verkleinerung der Klassenanzahl wird abgelehnt, solange eine betroffene Klasse Einträge hat.
 
-### Lehrer-Anwesenheit
+### Lehrer-Anwesenheit und Lehrerliste
 
-In der Klassenansicht stehen nur noch die Schüler in der Anwesenheitsliste. L1 und L2 markieren sich über das Personensymbol im Dialog **Lehrer** selbst; vorausgewählt ist immer „abwesend“, bis eine Lehrkraft sich als anwesend meldet. **Anwesenheit senden** im Lehrer-Dialog speichert nur die Lehrer und ändert den Meldestatus der Klasse nicht. Sendet die Klasse die Schülerliste, bleiben bereits gemeldete Lehrer erhalten; nicht gemeldete Lehrer gelten als abwesend. Für die Kursleitung bleiben die Lehrer in Tabelle, Klassenvorschau und Zählung „Anwesende L“ unverändert sichtbar.
+Die Kursleitung pflegt unter **Links** über **Lehrer** eine zentrale Lehrerliste (höchstens 300 Namen). L1 und L2 einer Klasse werden im Klassendialog aus dieser Liste gewählt; ein neuer Name wird dabei in die Liste aufgenommen. Umbenennen und Entfernen gelten auch für die Zuordnungen; frühere Anwesenheiten bleiben erhalten.
+
+In der Klassenansicht stehen nur Schüler in der Anwesenheitsliste. Das Personensymbol öffnet **Lehrer** mit allen Lehrern der Liste: L1 und L2 der Klasse oben, darunter alle anderen alphabetisch, ab neun Namen mit Suche. So finden auch Vertretungen ihren Namen. Die Lehrerliste ist für alle Klassen dieselbe: Jeder kann jeden Lehrer markieren, nicht gemeldete Lehrer gelten als abwesend, und jede Lehrkraft zählt pro Termin einmal – auch wenn sie in mehreren Klassen unterrichtet. Gesendet werden nur geänderte Einträge, sodass gleichzeitige Meldungen aus mehreren Klassen zusammengeführt werden. Die Lehrer-Meldung ändert den Meldestatus der Klassen nicht.
+
+Gespeichert wird unter `staff/{hash}` (Namen, L1/L2) und `staff/{hash}/days/{datum}` (Markierungen); jeder Klassenlink kennt den Hash. Beim ersten Öffnen durch die Kursleitung werden bestehende Listen umgestellt: Die Lehrerliste entsteht aus den bisherigen L1/L2, vorhandene Anwesend-Meldungen von heute, den beiden letzten und allen zukünftigen Terminen werden übernommen.
+
+### Schul-Link
+
+Unter **Links** steht oben der **Schul-Link**. Er öffnet eine Seite mit allen Klassen; nach der Wahl erscheint die bekannte Klassenansicht mit **Andere Klasse** zum Wechseln. Das Gerät merkt sich die zuletzt gewählte Klasse und öffnet sie beim nächsten Mal direkt. Wer den Schul-Link hat, erreicht jede Klasse. **Link erneuern** macht den bisherigen Schul-Link sofort ungültig; die Lehrer-Markierungen bleiben erhalten. Die einzelnen Klassenlinks funktionieren weiterhin.
 
 **Nach dem Zusammenführen müssen die Firestore-Regeln einmal neu veröffentlicht werden**, sonst lehnt Firebase das Klassenbuch ab (GitHub Pages veröffentlicht nur die Website):
 ```sh

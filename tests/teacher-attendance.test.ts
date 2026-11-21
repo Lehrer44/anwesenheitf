@@ -1,75 +1,73 @@
 import assert from 'node:assert/strict';
-import {initial,mutate,groupView,attendanceDraft,attendanceCounts,orderedRoster,isTeacher,syncFutureSessions,syncReportingTeachers,needsTeacherSync,teacherRoster} from '../src/model.ts';
-import {documentsFor,groupState,mergeLessons,tokenHash,type Channel,type Lesson} from '../src/firebase-data.ts';
-import {Timestamp} from 'firebase/firestore';
+import {initial,mutate,groupView,attendanceDraft,attendanceCounts,isTeacher,normalizeLeaders,syncReportingTeachers,needsTeacherSync,registeredTeachers,teacherRoster,teacherRowId,type State} from '../src/model.ts';
+import {documentsFor,mergeStaffDays,tokenHash,type Channel,type Portal,type Staff,type StaffDay} from '../src/firebase-data.ts';
 
-const s=initial(2),[a,b]=s.groups;
+// A course from the previous version: per-class teacher rows, no central list and no school link.
+const s=initial(2),[a,b]=s.groups;delete s.teachers;delete s.school;
 mutate(s,{action:'addStudents',names:'Anna\nBen',group:a.id});
 mutate(s,{action:'addStudents',names:'Clara',group:b.id});
-// Existing lessons predate teacher support; backfill only reportable dates.
 for(const date of ['2000-01-01','2000-01-08','2000-01-15','2099-01-01'])mutate(s,{action:'session',date});
 mutate(s,{action:'group',id:a.id,name:a.name,l1:'Teacher A',l2:'Teacher B'});
 mutate(s,{action:'group',id:b.id,name:b.name,l1:'Teacher A'});
-const oldest=structuredClone(s.sessions[0]),pupils=structuredClone(s.students),day=s.sessions[2];
-day.marks[s.students[0].id]='anwesend';day.reports[a.id]='sent';
-assert.equal(needsTeacherSync(s),true);syncReportingTeachers(s);
-assert.equal(needsTeacherSync(s),false);assert.deepEqual(s.sessions[0],oldest);assert.deepEqual(s.students,pupils);
-assert.equal(day.reports[a.id],undefined);assert.equal(day.marks[s.students[0].id],'anwesend');
-assert.equal(day.roster.filter(isTeacher).length,3);
-const stable=structuredClone(s);syncReportingTeachers(s);assert.deepEqual(s,stable);
-// Map key order returned by Firestore must not trigger another migration.
-for(const d of s.sessions)d.roster=d.roster.map(p=>Object.fromEntries(Object.entries(p).reverse()) as typeof p);
+const [ta,tb]=[a.lehrer!.l1!,a.lehrer!.l2!];
+const legacy=s.sessions[2];
+legacy.roster.push({id:'teacher-'+a.id+'-'+ta.id,name:ta.name,group:a.id,teacherId:ta.id,teacherRole:'L1'},{id:'teacher-'+b.id+'-'+ta.id,name:ta.name,group:b.id,teacherId:ta.id,teacherRole:'L1'});
+legacy.marks['teacher-'+a.id+'-'+ta.id]='anwesend';legacy.marks[s.students[0].id]='anwesend';legacy.reports[a.id]='sent';
+const oldest=structuredClone(s.sessions[0]),pupils=structuredClone(s.students);
+assert.equal(needsTeacherSync(s),true);
+normalizeLeaders(s);syncReportingTeachers(s,'2000-01-15');
+// One central row per teacher, presence carried over, class reports and old history untouched.
+assert.deepEqual(registeredTeachers(s).map(t=>t.name),['Teacher A','Teacher B']);assert.ok(s.school?.portal&&s.school.staff);
+assert.deepEqual(legacy.roster.filter(isTeacher).map(p=>p.id),[teacherRowId(ta.id),teacherRowId(tb.id)]);
+assert.equal(legacy.marks[teacherRowId(ta.id)],'anwesend');assert.equal(legacy.marks['teacher-'+a.id+'-'+ta.id],undefined);
+assert.equal(legacy.reports[a.id],'sent');assert.equal(legacy.marks[s.students[0].id],'anwesend');
+assert.deepEqual(s.sessions[0],oldest);assert.deepEqual(s.students,pupils);
 assert.equal(needsTeacherSync(s),false);
+const stable=structuredClone(s);syncReportingTeachers(s,'2000-01-15');assert.deepEqual(s,stable);
+assert.deepEqual(attendanceCounts(s,legacy).teachers,{present:1,total:2});
 
-const docs=await documentsFor(s,'teacher-course','owner',0),hash=await tokenHash(a.token!),otherHash=await tokenHash(b.token!);
-const lesson=docs.get('channels/'+hash+'/lessons/'+day.date) as Lesson;
-const view=groupState(docs.get('channels/'+hash) as Channel,[lesson]);
-const rows=orderedRoster(view,view.sessions[0].roster);
-assert.deepEqual(rows.map(p=>p.teacherRole||p.name),['L1','L2','Anna','Ben']);
-assert.equal(view.students.length,2);assert.equal(docs.get('courses/teacher-course/private/config').students.length,3);
-const draft=attendanceDraft(view.sessions[0]),teachers=rows.filter(isTeacher);
-assert.equal(draft[teachers[0].id],'abwesend');assert.notEqual(teachers[0].id,teachers[0].teacherId);
-const incomplete={...draft};delete incomplete[rows.find(p=>!isTeacher(p))!.id];
-assert.throws(()=>mutate(view,{action:'submit',date:day.date,marks:incomplete},view.groups[0]));
-// Teachers report separately: a pupil report needs no teacher marks, keeps their own report and defaults the rest to absent.
-const pupilsOnly=Object.fromEntries(rows.filter(p=>!isTeacher(p)).map(p=>[p.id,draft[p.id]])),separate=structuredClone(view);
-mutate(separate,{action:'submitTeachers',date:day.date,marks:{[teachers[0].id]:'anwesend',[teachers[1].id]:'abwesend'}},separate.groups[0]);
-assert.equal(separate.sessions[0].marks[teachers[0].id],'anwesend');assert.deepEqual(separate.sessions[0].reports,{});
-assert.deepEqual(Object.fromEntries(rows.filter(p=>!isTeacher(p)).map(p=>[p.id,separate.sessions[0].marks[p.id]])),Object.fromEntries(rows.filter(p=>!isTeacher(p)).map(p=>[p.id,view.sessions[0].marks[p.id]])));
-mutate(separate,{action:'submit',date:day.date,marks:pupilsOnly},separate.groups[0]);
-assert.equal(separate.sessions[0].marks[teachers[0].id],'anwesend');assert.equal(separate.sessions[0].marks[teachers[1].id],'abwesend');assert.ok(separate.sessions[0].reports[separate.groups[0].id]);
-const fresh=structuredClone(view);mutate(fresh,{action:'submit',date:day.date,marks:pupilsOnly},fresh.groups[0]);assert.equal(fresh.sessions[0].marks[teachers[0].id],'abwesend');
-for(const marks of [{[teachers[0].id]:'anwesend'},{[teachers[0].id]:'anwesend',[teachers[1].id]:'entschuldigt'},{[teachers[0].id]:'anwesend',[teachers[1].id]:'abwesend',[rows.find(p=>!isTeacher(p))!.id]:'anwesend'}])assert.throws(()=>mutate(structuredClone(view),{action:'submitTeachers',date:day.date,marks},view.groups[0]),/Lehrer/);
-assert.throws(()=>mutate(view,{action:'submit',date:day.date,marks:{...draft,[teachers[0].id]:'entschuldigt'}},view.groups[0]));
-const foreign=(docs.get('channels/'+otherHash+'/lessons/'+day.date) as Lesson).roster.find(isTeacher)!;
-assert.throws(()=>mutate(view,{action:'submit',date:day.date,marks:{...draft,[foreign.id]:'anwesend'}},view.groups[0]));
-draft[teachers[0].id]='anwesend';
-mutate(view,{action:'submit',date:day.date,marks:draft},view.groups[0]);
-const submitted={...lesson,marks:view.sessions[0].marks,reportedAt:Timestamp.fromMillis(12345)};
-const merged=mergeLessons(s,[submitted]);
-assert.equal(merged.sessions[2].marks[teachers[0].id],'anwesend');
-assert.deepEqual(attendanceCounts(merged,merged.sessions[2]),{students:{present:1,total:3},teachers:{present:1,total:2}});
-merged.sessions[2].marks[foreign.id]='anwesend';
-assert.equal(attendanceCounts(merged,merged.sessions[2]).teachers.present,1);
-merged.sessions[2].cancelled='Ausfall';assert.equal(attendanceCounts(merged,merged.sessions[2]).teachers.present,0);
-const beforeReset=structuredClone(view.students);mutate(view,{action:'resetSession',date:day.date});assert.deepEqual(view.sessions[0].marks,{});assert.deepEqual(view.students,beforeReset);
+// Class links list pupils only; every class sees the same central teacher list.
+assert.ok(groupView(s,a).sessions.every(d=>!d.roster.some(isTeacher)));
+const docs=await documentsFor(s,'teacher-course','owner',0),staffHash=await tokenHash(s.school!.staff),portalHash=await tokenHash(s.school!.portal);
+const staff=docs.get('staff/'+staffHash) as Staff,day=docs.get('staff/'+staffHash+'/days/'+legacy.date) as StaffDay,portal=docs.get('portals/'+portalHash) as Portal;
+assert.deepEqual(staff.teachers,[{id:ta.id,name:'Teacher A'},{id:tb.id,name:'Teacher B'}]);
+assert.deepEqual(staff.lehrer,{[a.id]:[ta.id,tb.id],[b.id]:[ta.id,'']});
+assert.deepEqual(day.teacherIds,[teacherRowId(ta.id),teacherRowId(tb.id)]);assert.deepEqual(day.marks,{[teacherRowId(ta.id)]:'anwesend'});
+for(const g of [a,b])assert.equal((docs.get('channels/'+await tokenHash(g.token!)) as Channel).staff,staffHash);
+assert.deepEqual(portal.classes.map(c=>c.token),[a.token,b.token]);
+assert.ok(!JSON.stringify(docs.get('staff/'+staffHash)).includes(a.token!));
+// Any teacher may mark any teacher; marks for unknown rows are ignored.
+const merged=mergeStaffDays(s,[{...day,marks:{[teacherRowId(tb.id)]:'anwesend'}},{...day,date:'1999-01-01',marks:{}}]);
+assert.equal(merged.sessions[2].marks[teacherRowId(tb.id)],'anwesend');assert.equal(merged.sessions[2].marks[teacherRowId(ta.id)],undefined);
+assert.deepEqual(mergeStaffDays(s,[{...day,teacherIds:[...day.teacherIds,s.students[0].id],marks:{[s.students[0].id]:'abwesend'}}]).sessions[2].marks[s.students[0].id],'anwesend');
 
-// Changed assignments invalidate a stale draft and remove only departing teacher marks.
-const past=structuredClone(s.sessions[0]);day.marks[teachers[0].id]='anwesend';day.marks[teachers[1].id]='abwesend';day.reports[a.id]='sent';
-mutate(s,{action:'group',id:a.id,name:a.name,l1:'Teacher C',l2:''});syncReportingTeachers(s);
-assert.equal(day.reports[a.id],undefined);assert.equal(day.marks[teachers[0].id],undefined);assert.equal(day.marks[s.students[0].id],'anwesend');
-assert.deepEqual(s.sessions[0],past);assert.deepEqual(s.students,pupils);
-assert.throws(()=>mutate(s,{action:'submit',date:day.date,marks:draft},a));
-assert.equal(mergeLessons(s,[submitted]).sessions[2].marks[teachers[0].id],undefined);
-syncFutureSessions(s,'2099-01-01');assert.equal(s.sessions[3].roster.filter(isTeacher).length,2);
-assert.deepEqual(groupView(s,a).sessions[2].roster.filter(isTeacher).map(p=>p.name),['Teacher C']);
+// Class reports ignore teacher entries in a draft but reject foreign ones.
+const view=groupView(s,a),viewDay=view.sessions[2];
+mutate(view,{action:'submit',date:viewDay.date,marks:{...attendanceDraft(viewDay),[teacherRowId(ta.id)]:'abwesend'}},view.groups[0]);
+assert.equal(viewDay.marks[teacherRowId(ta.id)],undefined);
+assert.throws(()=>mutate(view,{action:'submit',date:viewDay.date,marks:{...attendanceDraft(viewDay),[s.students[2].id]:'anwesend'}},view.groups[0]));
+assert.throws(()=>mutate(view,{action:'submitTeachers',date:viewDay.date,marks:{}},view.groups[0]));
 
-// A class with only teachers can still submit, and teachers never affect pupil numbering.
-const only=initial(1);mutate(only,{action:'group',id:only.groups[0].id,name:'Teachers',l2:'Teacher'});
-mutate(only,{action:'session',date:'2099-02-01'});assert.equal(only.students.length,0);
-assert.deepEqual(only.sessions[0].roster.map(p=>p.teacherRole),['L2']);
+// The central list: add, rename (also in L1/L2), remove (clears the assignment), stale and duplicate drafts.
+const edit=(state:State,teachers:{id?:string,name:string}[])=>mutate(state,{action:'editTeachers',original:structuredClone(registeredTeachers(state)),teachers});
+edit(s,[{id:ta.id,name:'Teacher A2'},{id:tb.id,name:'Teacher B'},{name:'Substitute'}]);
+assert.equal(a.lehrer!.l1!.name,'Teacher A2');assert.equal(b.lehrer!.l1!.name,'Teacher A2');assert.equal(registeredTeachers(s).length,3);
+syncReportingTeachers(s,'2000-01-15');assert.equal(s.sessions[3].roster.filter(isTeacher).length,3);
+assert.ok(s.sessions[3].roster.some(p=>p.name==='Substitute'&&p.group===''));
+edit(s,[{id:tb.id,name:'Teacher B'},...registeredTeachers(s).filter(t=>t.name==='Substitute')]);
+assert.equal(a.lehrer!.l1,null);assert.equal(a.lehrer!.l2!.id,tb.id);assert.equal(b.lehrer!.l1,null);
+syncReportingTeachers(s,'2000-01-15');assert.equal(legacy.marks[teacherRowId(ta.id)],undefined);assert.deepEqual(s.sessions[0],oldest);
+const current=structuredClone(s);
+assert.throws(()=>mutate(s,{action:'editTeachers',original:[],teachers:[]}),/zwischenzeitlich/);
+for(const teachers of [[{name:'X'},{name:' x '}],[{name:''}],[{name:'y'.repeat(151)}],[{id:'unknown',name:'Z'}]])assert.throws(()=>edit(s,teachers));
+assert.deepEqual(s,current);
+// Assigning a new name in the class dialog adds it to the central list.
+mutate(s,{action:'group',id:b.id,name:b.name,l1:'New Teacher'});assert.ok(registeredTeachers(s).some(t=>t.name==='New Teacher'));
+assert.equal(teacherRoster(s).length,3);
+
+// The school link can be renewed; a class with only teachers has nothing to report as a class.
+const old=s.school!.portal;mutate(s,{action:'rotateSchool'});assert.notEqual(s.school!.portal,old);
+const only=initial(1);mutate(only,{action:'group',id:only.groups[0].id,name:'Teachers',l2:'Teacher'});mutate(only,{action:'session',date:'2099-02-01'});
 assert.throws(()=>mutate(only,{action:'submit',date:'2099-02-01',marks:{}},only.groups[0]),/keine Schüler/);
-mutate(only,{action:'submitTeachers',date:'2099-02-01',marks:attendanceDraft(only.sessions[0])},only.groups[0]);
 assert.deepEqual(attendanceCounts(only,only.sessions[0]),{students:{present:0,total:0},teachers:{present:0,total:1}});
-assert.equal(teacherRoster(only).length,1);
-console.log('Teacher attendance checks passed: migration, ordering, separate numbering, scoped submissions, separate teacher reports, persistence, unique counts, stale assignments, reset and teacher-only classes.');
+console.log('Teacher attendance checks passed: migration to a central list, carried presence, pupil-only class reports, shared teacher days, school link, list editing and teacher-only classes.');

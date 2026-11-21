@@ -15,7 +15,7 @@ service cloud.firestore {
   //   cancelled, roster, rosterIds, marks, reportedAt:timestamp|null.
   // channels/{hash}/classbook/{date}: ownerUid, courseId, groupId, date,
   //   quran, bildung, arabisch, optional bemerkungen (<=2000 each, at least one), updatedAt:timestamp.
-  // Groups replace their own complete marks + server timestamp, or update marks without a new report time.
+  // Groups can only replace their own complete marks + server timestamp.
   // A channel path is a bearer credential, just like the existing secret link.
   function signed() { return request.auth != null; }
   function verified() {
@@ -47,9 +47,12 @@ service cloud.firestore {
     && d.dates is list && d.dates.size()<=1000 && d.dates.toSet().size()==d.dates.size();
   }
   function validConfig(d) {
-   return d.keys().hasAll(['students','groups','demo']) && d.keys().hasOnly(['students','groups','demo'])
+   return d.keys().hasAll(['students','groups','demo']) && d.keys().hasOnly(['students','groups','demo','teachers','school'])
     && d.students is list && d.students.size()<=5000
-    && d.groups is list && d.groups.size()<=30 && d.demo is bool;
+    && d.groups is list && d.groups.size()<=30 && d.demo is bool
+    && (!('teachers' in d) || (d.teachers is list && d.teachers.size()<=300))
+    && (!('school' in d) || (d.school is map && d.school.keys().hasOnly(['portal','staff'])
+     && d.school.portal is string && d.school.staff is string));
   }
   function marks(d) {
    return d is map && d.size()<=5000 && d.values().hasOnly(['anwesend','abwesend','entschuldigt']);
@@ -68,9 +71,42 @@ service cloud.firestore {
   function validChannel(d,hash) {
    return hash.matches('^[a-f0-9]{64}$')
     && d.keys().hasAll(['ownerUid','courseId','groupId','title','group','students','active'])
-    && d.keys().hasOnly(['ownerUid','courseId','groupId','title','group','students','active'])
+    && d.keys().hasOnly(['ownerUid','courseId','groupId','title','group','students','active','staff'])
     && id(d.ownerUid) && id(d.courseId) && id(d.groupId) && text(d.title,100)
-    && validGroup(d.group,d.groupId) && d.students is list && d.students.size()<=5000 && d.active is bool;
+    && validGroup(d.group,d.groupId) && d.students is list && d.students.size()<=5000 && d.active is bool
+    && (!('staff' in d) || (d.staff is string && d.staff.matches('^[a-f0-9]{64}$')));
+  }
+  // staff/{hash}: central teacher list; staff/{hash}/days/{date}: teacher marks of one lesson day.
+  // portals/{hash}: shared school link with every class and its class link token.
+  function validStaff(d,hash) {
+   return hash.matches('^[a-f0-9]{64}$')
+    && d.keys().hasAll(['ownerUid','courseId','title','teachers','lehrer','active'])
+    && d.keys().hasOnly(['ownerUid','courseId','title','teachers','lehrer','active'])
+    && id(d.ownerUid) && id(d.courseId) && text(d.title,100)
+    && d.teachers is list && d.teachers.size()<=300 && d.lehrer is map && d.lehrer.size()<=30 && d.active is bool;
+  }
+  function validStaffDay(d,day) {
+   return d.keys().hasAll(['ownerUid','courseId','date','cancelled','teacherIds','marks'])
+    && d.keys().hasOnly(['ownerUid','courseId','date','cancelled','teacherIds','marks'])
+    && id(d.ownerUid) && id(d.courseId) && date(day) && d.date==day && text(d.cancelled,200)
+    && d.teacherIds is list && d.teacherIds.size()<=300 && marks(d.marks) && d.marks.keys().hasOnly(d.teacherIds);
+  }
+  function validPortal(d,hash) {
+   return hash.matches('^[a-f0-9]{64}$')
+    && d.keys().hasAll(['ownerUid','courseId','title','classes','active'])
+    && d.keys().hasOnly(['ownerUid','courseId','title','classes','active'])
+    && id(d.ownerUid) && id(d.courseId) && text(d.title,100)
+    && d.classes is list && d.classes.size()<=30 && d.active is bool;
+  }
+  function activeShared(path) {
+   let parent=get(path);
+   return signed() && parent.data.active==true
+    && get(/databases/$(database)/documents/courses/$(parent.data.courseId)).data.ownerUid==parent.data.ownerUid;
+  }
+  function activeStaff(hash) { return activeShared(/databases/$(database)/documents/staff/$(hash)); }
+  function boundToStaff(d,hash) {
+   let parent=getAfter(/databases/$(database)/documents/staff/$(hash));
+   return d.courseId==parent.data.courseId && d.ownerUid==parent.data.ownerUid;
   }
   function validLesson(d,day) {
    return d.keys().hasAll(['ownerUid','courseId','groupId','date','cancelled','roster','rosterIds','marks','reportedAt'])
@@ -140,10 +176,8 @@ service cloud.firestore {
       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId','groupId','date']))
      || (activeChannel(hash) && resource.data.cancelled=='' && resource.data.rosterIds.size()>0
       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks','reportedAt'])
-      // A class report is complete and timestamped; teacher self-reports change marks only.
-      && ((request.resource.data.marks.keys().hasAll(resource.data.rosterIds)
-        && request.resource.data.reportedAt==request.time)
-       || request.resource.data.reportedAt==resource.data.reportedAt)));
+      && request.resource.data.marks.keys().hasAll(resource.data.rosterIds)
+      && request.resource.data.reportedAt==request.time));
     allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
    }
    // Class links write their own entries; owners only move or remove them with the class.
@@ -157,6 +191,38 @@ service cloud.firestore {
      && request.resource.data.updatedAt==request.time;
     allow delete: if activeChannel(hash) || (manages(resource.data.ownerUid) && owner(resource.data.courseId));
    }
+  }
+  // Like class channels, the secret hash is the bearer credential; IDs cannot be enumerated.
+  match /staff/{hash} {
+   allow get: if (approvedAccount() && resource==null) || manages(resource.data.ownerUid) || activeStaff(hash);
+   allow list: if manages(resource.data.ownerUid);
+   allow create: if approvedAccount() && validStaff(request.resource.data,hash)
+    && request.resource.data.ownerUid==getAfter(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerUid && ownerAfter(request.resource.data.courseId);
+   allow update: if manages(resource.data.ownerUid) && ownerAfter(resource.data.courseId) && validStaff(request.resource.data,hash)
+    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId']);
+   allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
+   // Any teacher may mark any teacher; only marks change, the owner keeps dates and the list.
+   match /days/{day} {
+    allow read: if (approvedAccount() && (resource==null || manages(resource.data.ownerUid))) || activeStaff(hash);
+    allow create: if approvedAccount() && validStaffDay(request.resource.data,day)
+     && request.resource.data.ownerUid==getAfter(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerUid && ownerAfter(request.resource.data.courseId)
+     && boundToStaff(request.resource.data,hash);
+    allow update: if validStaffDay(request.resource.data,day) && (
+     (manages(resource.data.ownerUid) && ownerAfter(resource.data.courseId) && boundToStaff(request.resource.data,hash)
+      && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId','date']))
+     || (activeStaff(hash) && resource.data.cancelled==''
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks'])));
+    allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
+   }
+  }
+  match /portals/{hash} {
+   allow get: if (approvedAccount() && resource==null) || manages(resource.data.ownerUid) || activeShared(/databases/$(database)/documents/portals/$(hash));
+   allow list: if manages(resource.data.ownerUid);
+   allow create: if approvedAccount() && validPortal(request.resource.data,hash)
+    && request.resource.data.ownerUid==getAfter(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.ownerUid && ownerAfter(request.resource.data.courseId);
+   allow update: if manages(resource.data.ownerUid) && ownerAfter(resource.data.courseId) && validPortal(request.resource.data,hash)
+    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId']);
+   allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
   }
   match /{document=**} { allow read,write: if false; }
  }
