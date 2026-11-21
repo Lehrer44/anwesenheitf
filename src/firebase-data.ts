@@ -1,8 +1,14 @@
 import {Timestamp} from 'firebase/firestore';
-import {groupView, type State, type Status, type Student} from './model.ts';
+import {groupView,isTeacher,registeredTeachers,displayClassName,type State,type Status,type Student} from './model.ts';
 
 export type Course = {ownerUid:string,title:string,version:number,dates:string[]};
-export type Channel = {ownerUid:string,courseId:string,groupId:string,title:string,group:State['groups'][number],students:Student[],active:boolean};
+// staff: hash of the course's central teacher list, shared by all class links.
+export type Channel = {ownerUid:string,courseId:string,groupId:string,title:string,group:State['groups'][number],students:Student[],active:boolean,staff?:string};
+// staff/{hash}: teacher names and current L1/L2 per class; staff/{hash}/days/{date}: teacher marks for one lesson day.
+export type Staff = {ownerUid:string,courseId:string,title:string,teachers:{id:string,name:string}[],lehrer:Record<string,string[]>,active:boolean};
+export type StaffDay = {ownerUid:string,courseId:string,date:string,cancelled:string,teacherIds:string[],marks:Record<string,Status>};
+// portals/{hash}: the shared school link listing every class with its class link token.
+export type Portal = {ownerUid:string,courseId:string,title:string,classes:{id:string,name:string,token:string}[],active:boolean};
 export type Lesson = {ownerUid:string,courseId:string,groupId:string,date:string,cancelled:string,roster:Student[],rosterIds:string[],marks:Record<string,Status>,reportedAt:Timestamp|null};
 export type Documents = Map<string,any>;
 export const clean = <T>(value:T):T => JSON.parse(JSON.stringify(value));
@@ -28,6 +34,17 @@ export function mergeLessons(state:State,lessons:Lesson[]):State {
  }
  return result;
 }
+// Teacher marks come only from the central teacher list.
+export function mergeStaffDays(state:State,days:StaffDay[]):State {
+ const result=structuredClone(state);
+ for(const day of days){
+  const d=result.sessions.find(x=>x.date===day.date);if(!d)continue;
+  for(const id of day.teacherIds)if(d.roster.some(p=>p.id===id&&isTeacher(p))){delete d.marks[id];if(day.marks[id])d.marks[id]=day.marks[id];}
+ }
+ return result;
+}
+export const staffPath=async(state:Pick<State,'school'>)=>state.school?'staff/'+await tokenHash(state.school.staff):'';
+export const portalPath=async(state:Pick<State,'school'>)=>state.school?'portals/'+await tokenHash(state.school.portal):'';
 export function groupState(channel:Channel,lessons:Lesson[]):State {
  return {title:channel.title,groups:[channel.group],students:channel.students,sessions:lessons.map(d=>({
   date:d.date,cancelled:d.cancelled,roster:d.roster,marks:d.marks,
@@ -36,13 +53,22 @@ export function groupState(channel:Channel,lessons:Lesson[]):State {
 }
 export async function documentsFor(state:State,courseId:string,ownerUid:string,version:number):Promise<Documents> {
  const s=clean(state),out:Documents=new Map();
- const base='courses/'+courseId;
+ const base='courses/'+courseId,staff=await staffPath(s),staffHash=staff.slice(6);
  out.set(base,{ownerUid,title:s.title,version,dates:s.sessions.map(d=>d.date)} satisfies Course);
- out.set(base+'/private/config',{students:s.students,groups:s.groups,demo:!!s.demo});
+ out.set(base+'/private/config',{students:s.students,groups:s.groups,demo:!!s.demo,...(s.teachers?{teachers:s.teachers}:{}),...(s.school?{school:s.school}:{})});
+ if(staff){
+  const teachers=registeredTeachers(s);
+  out.set(staff,{ownerUid,courseId,title:s.title,teachers:teachers.map(t=>({id:t.id,name:t.name})),lehrer:Object.fromEntries(s.groups.map(g=>[g.id,[g.lehrer?.l1?.id||'',g.lehrer?.l2?.id||'']])),active:true} satisfies Staff);
+  for(const d of s.sessions){
+   const ids=d.roster.filter(isTeacher).map(p=>p.id);
+   out.set(staff+'/days/'+d.date,{ownerUid,courseId,date:d.date,cancelled:d.cancelled,teacherIds:ids,marks:Object.fromEntries(ids.filter(id=>d.marks[id]).map(id=>[id,d.marks[id]]))} satisfies StaffDay);
+  }
+  out.set(await portalPath(s),{ownerUid,courseId,title:s.title,classes:s.groups.map(g=>({id:g.id,name:displayClassName(g.name),token:g.token!})),active:true} satisfies Portal);
+ }
  for(const d of s.sessions)out.set(base+'/sessions/'+d.date,d);
  for(const g of s.groups) {
   const hash=await tokenHash(g.token!),view=groupView(s,g),path='channels/'+hash;
-  out.set(path,{ownerUid,courseId,groupId:g.id,title:s.title,group:clean(view.groups[0]),students:view.students,active:true} satisfies Channel);
+  out.set(path,{ownerUid,courseId,groupId:g.id,title:s.title,group:clean(view.groups[0]),students:view.students,active:true,...(staffHash?{staff:staffHash}:{})} satisfies Channel);
   for(const d of view.sessions)out.set(path+'/lessons/'+d.date,{
    ownerUid,courseId,groupId:g.id,date:d.date,cancelled:d.cancelled,roster:d.roster,rosterIds:d.roster.map(p=>p.id),marks:d.marks,
    reportedAt:d.reports[g.id]?Timestamp.fromDate(new Date(d.reports[g.id])):null,

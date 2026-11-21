@@ -401,46 +401,57 @@ test('confirmed edits immediately return the saved state and live listeners publ
  }finally{emptyStop();}
 });
 
-test('teacher attendance uses existing scoped lesson permissions and survives owner edits',async()=>{
- const id='teacher-report-course',state=initial(2),[a,b]=state.groups,date='2099-05-01';
- mutate(state,{action:'addStudents',names:'Pupil A',group:a.id});
- mutate(state,{action:'addStudents',names:'Pupil B',group:b.id});
- mutate(state,{action:'session',date});
- // Simulate already saved L1/L2 settings with lessons from the previous app version.
- mutate(state,{action:'group',id:a.id,name:a.name,l1:'Teacher A',l2:'Teacher B'});
- mutate(state,{action:'group',id:b.id,name:b.name,l1:'Teacher A'});
- const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+test('central teacher list: shared marks for all class links, school link and migration',async()=>{
+ const id='teacher-staff-course',date='2099-03-01',legacy=initial(2),[a,b]=legacy.groups;delete legacy.teachers;delete legacy.school;
+ mutate(legacy,{action:'addStudents',names:'Pupil A',group:a.id});mutate(legacy,{action:'addStudents',names:'Pupil B',group:b.id});
+ mutate(legacy,{action:'session',date});
+ mutate(legacy,{action:'group',id:a.id,name:a.name,l1:'Teacher A',l2:'Teacher B'});mutate(legacy,{action:'group',id:b.id,name:b.name,l1:'Teacher A'});
+ delete legacy.teachers;
+ // A course from the previous version has no central list yet; opening it as owner migrates it.
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(legacy,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
  assert.equal(needsTeacherSync((await ownerRead(ownerDb,id)).state),true);
  await assertSucceeds(ownerAction(ownerDb,'owner',{action:'syncTeachers'},id));
- assert.equal(needsTeacherSync((await ownerRead(ownerDb,id)).state),false);
+ let loaded=await ownerRead(ownerDb,id);assert.equal(needsTeacherSync(loaded.state),false);
+ const school=loaded.state.school!,staffHash=await tokenHash(school.staff),portalHash=await tokenHash(school.portal);
  const hash=await tokenHash(a.token!),otherHash=await tokenHash(b.token!);
- const ref=doc(groupDb,'channels',hash,'lessons',date),otherRef=doc(groupDb,'channels',otherHash,'lessons',date);
- const lesson=(await getDoc(ref)).data() as Lesson,otherLesson=(await getDoc(otherRef)).data() as Lesson;
- const teacher=lesson.roster.find(p=>p.teacherRole==='L1')!,foreign=otherLesson.roster.find(p=>p.teacherId)!;
- assert.equal(lesson.roster.filter(p=>p.teacherId).length,2);assert.notEqual(teacher.id,foreign.id);assert.equal(teacher.teacherId,foreign.teacherId);
- const marks=Object.fromEntries(lesson.rosterIds.map(row=>[row,row===teacher.id?'anwesend':'abwesend']));
- const incomplete={...marks};delete incomplete[teacher.id];
- await assertFails(updateDoc(ref,{marks:incomplete,reportedAt:serverTimestamp()}));
- await assertFails(updateDoc(ref,{marks:{...marks,[foreign.id]:'anwesend'},reportedAt:serverTimestamp()}));
- await assertFails(updateDoc(ref,{roster:[],rosterIds:[],marks:{},reportedAt:serverTimestamp()}));
- // Teachers report themselves first: marks only, without a class report time.
- await assertSucceeds(updateDoc(ref,{marks:{[teacher.id]:'anwesend'}}));
- assert.equal((await getDoc(ref)).data()!.reportedAt,null);
- await assertFails(updateDoc(ref,{marks:{[teacher.id]:'anwesend',[foreign.id]:'anwesend'}}));
- await assertFails(updateDoc(ref,{marks:{[teacher.id]:'entschuldigt?'}}));
- await assertFails(updateDoc(ref,{marks:{[teacher.id]:'anwesend'},reportedAt:serverTimestamp()}));
- await assertSucceeds(updateDoc(ref,{marks,reportedAt:serverTimestamp()}));
- const reportedAt=(await getDoc(ref)).data()!.reportedAt;
- await assertSucceeds(updateDoc(ref,{marks}));assert.deepEqual((await getDoc(ref)).data()!.reportedAt,reportedAt);
- await assertFails(getDoc(doc(groupDb,'courses',id,'private','config')));
- let loaded=await ownerRead(ownerDb,id);assert.deepEqual(attendanceCounts(loaded.state,loaded.state.sessions[0]).teachers,{present:1,total:2});
- await assertSucceeds(ownerAction(ownerDb,'owner',{action:'title',title:'Renamed course'},id));
- loaded=await ownerRead(ownerDb,id);assert.equal(loaded.state.sessions[0].marks[teacher.id],'anwesend');
- await ownerAction(ownerDb,'owner',{action:'group',id:a.id,name:a.name,l1:'Teacher C',l2:''},id);
- await assertFails(updateDoc(ref,{marks,reportedAt:serverTimestamp()}));
- loaded=await ownerRead(ownerDb,id);assert.equal(loaded.state.sessions[0].marks[teacher.id],undefined);assert.equal(loaded.state.sessions[0].marks[state.students[0].id],'abwesend');
- assert.equal(loaded.state.sessions[0].reports[a.id],undefined);
- assert.ok((await getDoc(ref)).data()!.roster.some((p:any)=>p.name==='Teacher C'));
+ for(const h of [hash,otherHash])assert.equal((await getDoc(doc(groupDb,'channels',h))).data()!.staff,staffHash);
+ const staff=(await getDoc(doc(groupDb,'staff',staffHash))).data()!;assert.deepEqual(staff.teachers.map((t:any)=>t.name),['Teacher A','Teacher B']);
+ const dayRef=doc(groupDb,'staff',staffHash,'days',date),day=(await getDoc(dayRef)).data()!;
+ assert.equal(day.teacherIds.length,2);assert.ok((await getDoc(doc(groupDb,'channels',hash,'lessons',date))).data()!.rosterIds.every((x:string)=>!x.startsWith('teacher-')));
+ const [first,second]=day.teacherIds as string[];
+ // Any class link may mark any teacher; only valid marks of listed teachers are accepted.
+ await assertSucceeds(updateDoc(dayRef,{marks:{[first]:'anwesend'}}));
+ await assertSucceeds(updateDoc(dayRef,{marks:{[first]:'anwesend',[second]:'abwesend'}}));
+ for(const bad of [{marks:{[first]:'krank'}},{marks:{unknown:'anwesend'}},{teacherIds:[first]},{cancelled:'x'},{marks:{},date:'2099-03-02'}])await assertFails(updateDoc(dayRef,bad));
+ await assertFails(getDoc(doc(publicDb,'staff',staffHash)));await assertFails(getDocs(collection(publicDb,'staff',staffHash,'days')));
+ await assertFails(getDocs(collection(groupDb,'staff')));await assertFails(getDocs(collection(groupDb,'portals')));
+ loaded=await ownerRead(ownerDb,id);assert.deepEqual(attendanceCounts(loaded.state,loaded.state.sessions[0]).teachers,{present:1,total:2});
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'title',title:'Renamed staff course'},id));
+ loaded=await ownerRead(ownerDb,id);assert.equal(loaded.state.sessions[0].marks[first],'anwesend');
+ assert.equal((await getDoc(doc(groupDb,'staff',staffHash))).data()!.title,'Renamed staff course');
+ // The school link lists every class with its class link.
+ const portal=(await getDoc(doc(groupDb,'portals',portalHash))).data()!;assert.deepEqual(portal.classes.map((c:any)=>c.token),[a.token,b.token]);
+ await assertFails(getDoc(doc(publicDb,'portals',portalHash)));
+ await assertFails(setDoc(doc(groupDb,'portals',portalHash),{...portal,active:false}));await assertFails(updateDoc(doc(groupDb,'staff',staffHash),{teachers:[]}));
+ // A cancelled lesson accepts no teacher marks.
+ await ownerAction(ownerDb,'owner',{action:'cancel',date,reason:'Ferien'},id);
+ await assertFails(updateDoc(dayRef,{marks:{[second]:'anwesend'}}));
+ await ownerAction(ownerDb,'owner',{action:'restore',date},id);
+ // Renewing the school link revokes the old link and teacher list; marks move with it.
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'rotateSchool'},id));
+ loaded=await ownerRead(ownerDb,id);const renewed=await tokenHash(loaded.state.school!.staff),renewedPortal=await tokenHash(loaded.state.school!.portal);
+ assert.notEqual(renewed,staffHash);
+ await assertFails(getDoc(doc(groupDb,'portals',portalHash)));await assertFails(getDoc(dayRef));await assertFails(updateDoc(dayRef,{marks:{}}));
+ assert.equal((await getDoc(doc(groupDb,'staff',renewed,'days',date))).data()!.marks[first],'anwesend');
+ assert.equal((await getDoc(doc(groupDb,'channels',hash))).data()!.staff,renewed);assert.ok((await getDoc(doc(groupDb,'portals',renewedPortal))).exists());
+ // Editing the list updates every class link at once; deleting the list removes everything.
+ const teachers=loaded.state.teachers!;
+ await assertSucceeds(ownerAction(ownerDb,'owner',{action:'editTeachers',original:teachers,teachers:[...teachers,{name:'Substitute'}]},id));
+ assert.equal((await getDoc(doc(groupDb,'staff',renewed))).data()!.teachers.length,3);
+ assert.equal((await getDoc(doc(groupDb,'staff',renewed,'days',date))).data()!.teacherIds.length,3);
+ await saveCourseLists(ownerDb,'owner',[{id,title:'Renamed staff course'}],[]);
+ await env.withSecurityRulesDisabled(async ctx=>{const db=ctx.firestore() as unknown as Firestore;
+  for(const path of ['staff/'+renewed,'portals/'+renewedPortal,'staff/'+renewed+'/days/'+date])assert.equal((await getDoc(doc(db,path))).exists(),false);});
 });
 
 test('class book entries are class-scoped, conflict-checked and follow renewed links',async()=>{

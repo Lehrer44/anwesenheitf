@@ -84,13 +84,14 @@ assert.throws(()=>mutate(s,{action:'groupCount',count:1}));
 mutate(s,{action:'renameStudent',id:anna.id,name:'Anna Neu'});assert.equal(g.lehrer!.l1!.name,'Frau Lehrerin');assert.deepEqual(s.sessions,history);
 mutate(s,{action:'assign',id:anna.id,group:other.id});mutate(s,{action:'archive',id:anna.id});assert.equal(anna.archived,true);
 mutate(s,{action:'distribute'});assert.equal(registeredTeachers(s).length,2);
-mutate(s,{action:'group',id:g.id,name:g.name,l1:'',l2:''});assert.equal(registeredTeachers(s).length,1);assert.equal(other.lehrer!.l1!.id,teacherId);
-mutate(s,{action:'deleteGroup',id:other.id});assert.equal(registeredTeachers(s).length,0);
+// The central teacher list keeps teachers without a class; they can still substitute.
+mutate(s,{action:'group',id:g.id,name:g.name,l1:'',l2:''});assert.equal(registeredTeachers(s).length,2);assert.equal(other.lehrer!.l1!.id,teacherId);
+mutate(s,{action:'deleteGroup',id:other.id});assert.equal(registeredTeachers(s).length,2);
 
 // Counts include only the selected roster's present students, never stale marks.
 const day=s.sessions[0];day.marks={[anna.id]:'anwesend',[ben.id]:'abwesend',[clara.id]:'entschuldigt',removed:'anwesend'};
 assert.deepEqual(attendanceCounts(s,day),{students:{present:1,total:3},teachers:{present:0,total:0}});
-mutate(s,{action:'group',id:g.id,name:g.name,l1:'Lehrer A',l2:'Lehrer B'});syncReportingTeachers(s);assert.deepEqual(attendanceCounts(s,day).teachers,{present:0,total:2});
+mutate(s,{action:'group',id:g.id,name:g.name,l1:'Lehrer A',l2:'Lehrer B'});syncReportingTeachers(s);assert.deepEqual(attendanceCounts(s,day).teachers,{present:0,total:4});
 assert.equal(attendanceCounts(s).students.total,2);assert.equal(attendanceCounts(s).students.present,0);
 day.cancelled='Ausfall';assert.equal(attendanceCounts(s,day).students.present,0);day.cancelled='';
 const saved=structuredClone(day);assert.equal(attendanceDraft(day)[clara.id],'abwesend');assert.deepEqual(day,saved);
@@ -100,5 +101,5 @@ mutate(s,{action:'mark',date:day.date,id:anna.id,status:''});assert.equal(day.ma
 assert.throws(()=>mutate(s,{action:'deleteStudent',id:ben.id},g));
 const stale=attendanceDraft(day);mutate(s,{action:'deleteStudent',id:ben.id});assert.throws(()=>mutate(s,{action:'submit',date:day.date,marks:stale},g));
 mutate(s,{action:'submit',date:day.date,marks:attendanceDraft(day)},g);assert.equal(day.marks[ben.id],undefined);
-assert.equal(registeredTeachers(s).length,2);assert.equal(groupView(s,g).groups[0].leader,'Lehrer A');
+assert.equal(registeredTeachers(s).length,4);assert.equal(groupView(s,g).groups[0].leader,'Lehrer A');
 console.log('Teacher and attendance checks passed: independent records, legacy cleanup, stable/shared IDs, validation, history, counts, two-status submissions and stale drafts.');

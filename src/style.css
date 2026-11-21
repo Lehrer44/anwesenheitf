@@ -400,3 +400,28 @@
 .teacher-attendance .teacher-list .checkrow{padding-left:31px;padding-right:31px}
 .teacher-attendance .modal-actions{margin-top:18px}
 @media(max-width:760px){.teacher-attendance .teacher-list{margin:0 -16px}.teacher-attendance .teacher-list .checkrow{padding-left:12px;padding-right:12px}}
+
+/* Shared school link: class selection, class switch and the owner card. */
+.school-portal{max-width:640px}
+.school-title{font-size:22px;letter-spacing:-.4px}
+.school-classes{display:flex;flex-direction:column}
+.school-class{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:10px 24px;border-top:1px solid #d7e2dc;background:#fff;color:#253d3a;text-align:left;font-size:17px}
+.school-class:nth-child(odd){background:#edf3f0}.school-class:hover{background:#e2ece6}
+.school-class strong{flex:1;min-width:0;overflow-wrap:anywhere}
+.school-class small{color:#286b54;font-size:12px;font-weight:600}
+.class-switch{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;border-bottom:1px solid #edf1ee;font-size:15px}
+.class-switch .textbutton{font-size:13px;font-weight:600}
+.school-link-card{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;margin-bottom:20px;flex-wrap:wrap}
+.school-link-card p{font-size:12px;color:#7a8983;margin-top:6px;line-height:1.6;max-width:560px}
+.school-link-card .groupcard-links{align-items:center}
+/* Teacher list: search and editing. */
+.teacher-search{margin:0 0 12px}
+.teacher-attendance .teacher-list .checkrow:not(.teacher-row) .studentname strong{font-weight:400}
+.teachers-editor .teacher-edit-row{grid-template-columns:auto minmax(0,1fr)}
+.teacher-edit-name{display:flex;flex-direction:column;gap:3px;min-width:0}
+.teacher-edit-name input{width:100%}
+.teacher-edit-name small{font-size:11px;color:#5f7a6d}
+.teacher-add{margin-top:12px}
+@media(max-width:760px){.school-class{padding:10px 16px}.school-link-card{padding:16px}.school-link-card .groupcard-links{width:100%}}
+.modal label.search.teacher-search{display:flex;margin:0 0 12px;line-height:1}
+.modal label.search.teacher-search input{display:block;width:100%;margin:0;font-size:15px}

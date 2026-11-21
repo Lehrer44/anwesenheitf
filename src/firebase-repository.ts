@@ -1,6 +1,6 @@
 import {collection,doc,getDoc,getDocs,onSnapshot,onSnapshotsInSync,query,where,runTransaction,type Firestore,type Unsubscribe} from 'firebase/firestore';
 import {mutate,normalizeLeaders,syncFutureSessions,syncReportingTeachers,type State} from './model.ts';
-import {changesBetween,documentsFor,mergeLessons,tokenHash,type Course,type Lesson,type Documents} from './firebase-data.ts';
+import {changesBetween,documentsFor,mergeLessons,mergeStaffDays,portalPath,staffPath,tokenHash,type Course,type Lesson,type Documents,type StaffDay} from './firebase-data.ts';
 import {carryClassBooks,loadClassBooks} from './firebase-classbook.ts';
 // Only these actions create, renew or remove class links and therefore move class book entries.
 const channelActions=new Set(['rotate','deleteGroup','groupCount']);
@@ -10,7 +10,7 @@ export async function ownerRead(db:Firestore,course:string){
  const courseData=meta.data() as Course;
  const docs:Documents=new Map([[meta.ref.path,courseData],[config.ref.path,config.data()]]);
  sessions.forEach(d=>docs.set(d.ref.path,d.data()));
- const state:State={...config.data() as Pick<State,'students'|'groups'|'demo'>,title:courseData.title,sessions:sessions.docs.map(d=>d.data() as State['sessions'][number]).sort((a,b)=>a.date.localeCompare(b.date))};
+ const state:State={...config.data() as Pick<State,'students'|'groups'|'demo'|'teachers'|'school'>,title:courseData.title,sessions:sessions.docs.map(d=>d.data() as State['sessions'][number]).sort((a,b)=>a.date.localeCompare(b.date))};
  const lessons:Lesson[]=[];
  await Promise.all(state.groups.map(async g=>{
   const path='channels/'+await tokenHash(g.token!);
@@ -18,7 +18,15 @@ export async function ownerRead(db:Firestore,course:string){
   if(channel.exists())docs.set(path,channel.data());
   result.forEach(d=>{docs.set(d.ref.path,d.data());lessons.push(d.data() as Lesson);});
  }));
- return {docs,state:mergeLessons(state,lessons),meta:courseData};
+ // The central teacher list and the school link exist once the course was migrated.
+ const days:StaffDay[]=[],staff=await staffPath(state),portal=await portalPath(state);
+ if(staff){
+  const [staffDoc,result,portalDoc]=await Promise.all([getDoc(doc(db,staff)),getDocs(query(collection(db,staff,'days'),where('ownerUid','==',courseData.ownerUid))),getDoc(doc(db,portal))]);
+  if(staffDoc.exists())docs.set(staff,staffDoc.data());
+  if(portalDoc.exists())docs.set(portal,portalDoc.data());
+  result.forEach(d=>{docs.set(d.ref.path,d.data());days.push(d.data() as StaffDay);});
+ }
+ return {docs,state:mergeStaffDays(mergeLessons(state,lessons),days),meta:courseData};
 }
 export async function ownerAction(db:Firestore,_uid:string,body:any,course:string){
  for(let attempt=0;attempt<4;attempt++){
@@ -36,6 +44,7 @@ export async function ownerAction(db:Firestore,_uid:string,body:any,course:strin
     const config=before.get('courses/'+course+'/private/config');
     let state:State={...config,title:metadata.data()!.title,sessions:[...before].filter(([p])=>p.startsWith('courses/'+course+'/sessions/')).map(([,v])=>v).sort((a,b)=>a.date.localeCompare(b.date))};
     state=mergeLessons(state,[...before].filter(([p])=>p.startsWith('channels/')&&p.includes('/lessons/')).map(([,v])=>v));
+    state=mergeStaffDays(state,[...before].filter(([p])=>p.startsWith('staff/')&&p.includes('/days/')).map(([,v])=>v));
     normalizeLeaders(state);syncFutureSessions(state);mutate(state,body);syncFutureSessions(state);syncReportingTeachers(state);
     const after=await documentsFor(state,course,loaded.meta.ownerUid,loaded.meta.version+1);
     carryClassBooks(new Map([...before].filter(([p])=>books.has(p))),after,body.action==='deleteGroup');
@@ -62,25 +71,29 @@ export async function ownerAction(db:Firestore,_uid:string,body:any,course:strin
 }
 
 export function watchOwnerCourse(db:Firestore,course:string,onChange:(value:{state:State,meta:Course})=>void,onError:(error:Error)=>void):Unsubscribe{
- let stopped=false,meta:Course|null=null,config:Pick<State,'students'|'groups'|'demo'>|null=null,sessions:State['sessions']|null=null;
- let key:string|null=null,revision=0,groupStops:Unsubscribe[]=[],lessons=new Map<string,Lesson[]>();
+ let stopped=false,meta:Course|null=null,config:Pick<State,'students'|'groups'|'demo'|'teachers'|'school'>|null=null,sessions:State['sessions']|null=null;
+ let key:string|null=null,revision=0,groupStops:Unsubscribe[]=[],lessons=new Map<string,Lesson[]>(),days:StaffDay[]|null=null;
  const fail=(e:Error)=>{if(!stopped)onError(e);};
  const emit=()=>{
-  if(stopped||!meta||!config||!sessions||lessons.size!==config.groups.length)return;
-  onChange({meta,state:mergeLessons({...config,title:meta.title,sessions},[...lessons.values()].flat())});
+  if(stopped||!meta||!config||!sessions||lessons.size!==config.groups.length||(config.school&&!days))return;
+  onChange({meta,state:mergeStaffDays(mergeLessons({...config,title:meta.title,sessions},[...lessons.values()].flat()),days||[])});
  };
  const syncGroups=()=>{
   if(!config||!meta)return;
-  const groups=config.groups,ownerUid=meta.ownerUid,next=ownerUid+'|'+groups.map(g=>g.token).join('|');
+  const groups=config.groups,ownerUid=meta.ownerUid,school=config.school,next=ownerUid+'|'+groups.map(g=>g.token).join('|')+'|'+(school?.staff||'');
   if(next===key)return;
-  key=next;const current=++revision;groupStops.forEach(stop=>stop());groupStops=[];lessons=new Map();
-  Promise.all(groups.map(g=>tokenHash(g.token!))).then(hashes=>{
+  key=next;const current=++revision;groupStops.forEach(stop=>stop());groupStops=[];lessons=new Map();days=null;
+  Promise.all([staffPath({school}),...groups.map(g=>tokenHash(g.token!))]).then(([staff,...hashes])=>{
    if(stopped||revision!==current)return;
+   if(staff)groupStops.push(onSnapshot(query(collection(db,staff,'days'),where('ownerUid','==',ownerUid)),snap=>{
+    if(stopped||revision!==current)return;
+    days=snap.docs.map(d=>d.data() as StaffDay);
+   },e=>{if(revision===current)fail(e);}));
    // Explicit ownership also keeps a removed channel's empty query authorized.
-   groupStops=hashes.map(hash=>onSnapshot(query(collection(db,'channels',hash,'lessons'),where('ownerUid','==',ownerUid)),snap=>{
+   groupStops.push(...hashes.map(hash=>onSnapshot(query(collection(db,'channels',hash,'lessons'),where('ownerUid','==',ownerUid)),snap=>{
     if(stopped||revision!==current)return;
     lessons.set(hash,snap.docs.map(d=>d.data() as Lesson));
-   },e=>{if(revision===current)fail(e);}));
+   },e=>{if(revision===current)fail(e);})));
   }).catch(fail);
  };
  const stops=[
