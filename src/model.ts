@@ -85,12 +85,23 @@ export function syncFutureSessions(s:State,today=courseToday()){
 export function mutate(s:State,b:any,group?:Group):void {
  const find=()=>{const d=s.sessions.find(x=>x.date===b.date);if(!d)throw Error('Termin nicht gefunden.');return d;};
  if(group){
-  if(b.action!=='submit')throw Error('Nur die eigene Klassenmeldung ist erlaubt.');
+  if(b.action!=='submit'&&b.action!=='submitTeachers')throw Error('Nur die eigene Klassenmeldung ist erlaubt.');
   const d=find();if(d.cancelled)throw Error('Dieser Unterricht fällt aus.');
-  const ids=d.roster.filter(x=>x.group===group.id).map(x=>x.id);
-  if(!ids.length)throw Error('Für diese Klasse sind keine Schüler zugeteilt.');
-  if(!b.marks||Object.keys(b.marks).length!==ids.length||ids.some(id=>!['anwesend','abwesend'].includes(b.marks[id])))throw Error('Bitte für jeden Schüler einen Status wählen.');
-  ids.forEach(id=>d.marks[id]=b.marks[id]);d.reports[group.id]=new Date().toISOString();return;
+  const rows=d.roster.filter(x=>x.group===group.id),pupils=rows.filter(p=>!isTeacher(p)).map(p=>p.id),teachers=rows.filter(isTeacher).map(p=>p.id);
+  const valid=(id:string)=>['anwesend','abwesend'].includes(b.marks?.[id]);
+  const known=new Set(rows.map(p=>p.id)),sent=b.marks&&typeof b.marks==='object'?Object.keys(b.marks):[];
+  if(b.action==='submitTeachers'){
+   // Teachers mark themselves separately; the class report status stays unchanged.
+   if(!teachers.length)throw Error('Für diese Klasse sind keine Lehrer eingetragen.');
+   if(sent.length!==teachers.length||teachers.some(id=>!valid(id)))throw Error('Bitte für jeden Lehrer einen Status wählen.');
+   teachers.forEach(id=>d.marks[id]=b.marks[id]);return;
+  }
+  if(!pupils.length)throw Error('Für diese Klasse sind keine Schüler zugeteilt.');
+  if(sent.some(id=>!known.has(id))||pupils.some(id=>!valid(id))||teachers.some(id=>id in b.marks&&!valid(id)))throw Error('Bitte für jeden Schüler einen Status wählen.');
+  // Unreported teachers count as absent; a teacher's own earlier report is kept.
+  pupils.forEach(id=>d.marks[id]=b.marks[id]);
+  teachers.forEach(id=>d.marks[id]=id in b.marks?b.marks[id]:d.marks[id]==='anwesend'?'anwesend':'abwesend');
+  d.reports[group.id]=new Date().toISOString();return;
  }
  switch(b.action){
  case 'syncTeachers':syncReportingTeachers(s);break;

@@ -394,3 +394,9 @@
  .group-panel .classbook-actions .btn{min-width:42px;min-height:42px}
 }
 .modal form>p.classbook-existing{margin-bottom:0}
+
+/* Teachers report themselves in a dialog that reuses the class checklist rows. */
+.teacher-attendance .teacher-list{max-width:none;margin:0 -31px;border-bottom:2px solid #839b90}
+.teacher-attendance .teacher-list .checkrow{padding-left:31px;padding-right:31px}
+.teacher-attendance .modal-actions{margin-top:18px}
+@media(max-width:760px){.teacher-attendance .teacher-list{margin:0 -16px}.teacher-attendance .teacher-list .checkrow{padding-left:12px;padding-right:12px}}

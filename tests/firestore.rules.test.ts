@@ -193,9 +193,11 @@ test('complete enum-validated submissions require a server timestamp',async()=>{
  await assertFails(updateDoc(ref,{marks:{},reportedAt:serverTimestamp()}));
  await assertFails(updateDoc(ref,{marks:{[student]:'invalid'},reportedAt:serverTimestamp()}));
  await assertFails(updateDoc(ref,{marks:{[student]:'anwesend',[secondStudent]:'anwesend'},reportedAt:serverTimestamp()}));
- await assertFails(updateDoc(ref,{marks:{[student]:'anwesend'},reportedAt:null}));
  await assertFails(updateDoc(ref,{marks:{[student]:'anwesend'},reportedAt:Timestamp.fromMillis(0)}));
  await assertSucceeds(updateDoc(ref,{marks:{[student]:'anwesend'},reportedAt:serverTimestamp()}));
+ // A sent class report cannot be withdrawn or backdated by the class link.
+ await assertFails(updateDoc(ref,{marks:{[student]:'anwesend'},reportedAt:null}));
+ await assertFails(updateDoc(ref,{marks:{[student]:'anwesend'},reportedAt:Timestamp.fromMillis(0)}));
  const own=await ownerRead(ownerDb,courseId);assert.equal(own.state.sessions[0].marks[student],'anwesend');
 });
 test('seven-group owner edits preserve concurrent reports and separate course data',async()=>{
@@ -421,7 +423,15 @@ test('teacher attendance uses existing scoped lesson permissions and survives ow
  await assertFails(updateDoc(ref,{marks:incomplete,reportedAt:serverTimestamp()}));
  await assertFails(updateDoc(ref,{marks:{...marks,[foreign.id]:'anwesend'},reportedAt:serverTimestamp()}));
  await assertFails(updateDoc(ref,{roster:[],rosterIds:[],marks:{},reportedAt:serverTimestamp()}));
+ // Teachers report themselves first: marks only, without a class report time.
+ await assertSucceeds(updateDoc(ref,{marks:{[teacher.id]:'anwesend'}}));
+ assert.equal((await getDoc(ref)).data()!.reportedAt,null);
+ await assertFails(updateDoc(ref,{marks:{[teacher.id]:'anwesend',[foreign.id]:'anwesend'}}));
+ await assertFails(updateDoc(ref,{marks:{[teacher.id]:'entschuldigt?'}}));
+ await assertFails(updateDoc(ref,{marks:{[teacher.id]:'anwesend'},reportedAt:serverTimestamp()}));
  await assertSucceeds(updateDoc(ref,{marks,reportedAt:serverTimestamp()}));
+ const reportedAt=(await getDoc(ref)).data()!.reportedAt;
+ await assertSucceeds(updateDoc(ref,{marks}));assert.deepEqual((await getDoc(ref)).data()!.reportedAt,reportedAt);
  await assertFails(getDoc(doc(groupDb,'courses',id,'private','config')));
  let loaded=await ownerRead(ownerDb,id);assert.deepEqual(attendanceCounts(loaded.state,loaded.state.sessions[0]).teachers,{present:1,total:2});
  await assertSucceeds(ownerAction(ownerDb,'owner',{action:'title',title:'Renamed course'},id));
@@ -438,20 +448,27 @@ test('class book entries are class-scoped, conflict-checked and follow renewed l
  mutate(state,{action:'addStudents',names:'Pupil',group:first.id});mutate(state,{action:'session',date:day1});
  const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(state,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
  const hash=await tokenHash(first.token!),otherHash=await tokenHash(second.token!),ref=doc(groupDb,'channels',hash,'classbook',day1);
- const entry={date:day1,quran:'Sure 114',bildung:'Band 1, Seite 10',arabisch:'A und B'};
- await assertSucceeds(writeClassBookEntry(groupDb,hash,entry,null,today));
+ const entry={date:day1,quran:'Sure 114',bildung:'Band 1, Seite 10',arabisch:'A und B',bemerkungen:''};
+ await assertSucceeds(writeClassBookEntry(groupDb,hash,entry,null));
  const saved=(await getDoc(ref)).data()!;assert.equal(saved.groupId,first.id);assert.equal(saved.courseId,id);assert.equal(saved.ownerUid,'owner');
  const stamp=saved.updatedAt.toDate().toISOString();
  // A second form that opened before the first save must not overwrite it.
- await assert.rejects(writeClassBookEntry(groupDb,hash,{...entry,quran:'Andere Sure'},null,today),/zwischenzeitlich/);
- await assertSucceeds(writeClassBookEntry(groupDb,hash,{...entry,quran:'Sure 113\nSure 114'},stamp,today));
- await assertSucceeds(writeClassBookEntry(groupDb,hash,{date:day2,quran:'',bildung:'Gebet',arabisch:''},null,today));
+ await assert.rejects(writeClassBookEntry(groupDb,hash,{...entry,quran:'Andere Sure'},null),/zwischenzeitlich/);
+ await assertSucceeds(writeClassBookEntry(groupDb,hash,{...entry,quran:'Sure 113\nSure 114'},stamp));
+ await assertSucceeds(writeClassBookEntry(groupDb,hash,{date:day2,quran:'',bildung:'Gebet',arabisch:'',bemerkungen:''},null));
  assert.equal((await getDoc(ref)).data()!.quran,'Sure 113\nSure 114');
  // Shape, ownership and server timestamps are enforced for direct writes.
  const base={ownerUid:'owner',courseId:id,groupId:first.id,date:'2026-11-10',quran:'x',bildung:'',arabisch:'',updatedAt:serverTimestamp()};
  const target=doc(groupDb,'channels',hash,'classbook','2026-11-10');
  for(const bad of [{...base,extra:true},{...base,groupId:second.id},{...base,courseId:'course-one'},{...base,date:'2026-11-11'},{...base,quran:''},{...base,quran:'x'.repeat(2001)},{...base,updatedAt:Timestamp.fromDate(new Date('2020-01-01'))}])await assertFails(setDoc(target,bad));
- await assertSucceeds(setDoc(target,base));await assertFails(updateDoc(target,{groupId:second.id,updatedAt:serverTimestamp()}));await assertSucceeds(deleteDoc(target));
+ for(const bad of [{...base,quran:'',bemerkungen:''},{...base,bemerkungen:'x'.repeat(2001)},{...base,bemerkungen:3}])await assertFails(setDoc(target,bad));
+ // Entries saved before remarks existed stay valid; remarks alone are enough.
+ await assertSucceeds(setDoc(target,base));await assertFails(updateDoc(target,{groupId:second.id,updatedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(target,{quran:'',bemerkungen:'Ausflug',updatedAt:serverTimestamp()}));await assertSucceeds(deleteDoc(target));
+ // Entries can be planned for future days.
+ await assertSucceeds(writeClassBookEntry(groupDb,hash,{date:'2099-12-31',quran:'',bildung:'',arabisch:'',bemerkungen:'Vorbereitung'},null));
+ assert.equal((await getDoc(doc(groupDb,'channels',hash,'classbook','2099-12-31'))).data()!.bemerkungen,'Vorbereitung');
+ await assertSucceeds(writeClassBookEntry(groupDb,hash,{date:'2099-12-31',delete:true},(await getDoc(doc(groupDb,'channels',hash,'classbook','2099-12-31'))).data()!.updatedAt.toDate().toISOString()));
  await assertFails(setDoc(doc(groupDb,'channels',otherHash,'classbook','2026-11-10'),base));
  await assertFails(getDocs(collection(publicDb,'channels',hash,'classbook')));
  // Like lessons, the secret channel hash itself is the read credential.
@@ -460,21 +477,21 @@ test('class book entries are class-scoped, conflict-checked and follow renewed l
  await ownerAction(ownerDb,'owner',{action:'rotate',id:first.id},id);
  const renewed=await tokenHash((await ownerRead(ownerDb,id)).state.groups[0].token!);
  await assertFails(getDocs(collection(groupDb,'channels',hash,'classbook')));
- await assert.rejects(writeClassBookEntry(groupDb,hash,{...entry,quran:'alt'},null,today),/ungültig/);
+ await assert.rejects(writeClassBookEntry(groupDb,hash,{...entry,quran:'alt'},null),/ungültig/);
  const moved=await getDocs(collection(groupDb,'channels',renewed,'classbook'));
  assert.deepEqual(moved.docs.map(d=>d.id).sort(),[day1,day2]);assert.equal(moved.docs.find(d=>d.id===day1)!.data().quran,'Sure 113\nSure 114');
  await env.withSecurityRulesDisabled(async ctx=>{assert.equal((await getDocs(collection(ctx.firestore() as unknown as Firestore,'channels',hash,'classbook'))).size,0);});
  // Unrelated owner edits do not touch entries; class deletion removes them; automatic resizing refuses.
  await ownerAction(ownerDb,'owner',{action:'title',title:'Neu'},id);assert.equal((await getDocs(collection(groupDb,'channels',renewed,'classbook'))).size,2);
  const spareHash=await tokenHash(spare.token!);
- await assertSucceeds(writeClassBookEntry(groupDb,spareHash,{date:day1,quran:'x',bildung:'',arabisch:''},null,today));
+ await assertSucceeds(writeClassBookEntry(groupDb,spareHash,{date:day1,quran:'x',bildung:'',arabisch:'',bemerkungen:''},null));
  await assert.rejects(ownerAction(ownerDb,'owner',{action:'groupCount',count:2},id),/Klassenbuch/);
- await assertSucceeds(writeClassBookEntry(groupDb,spareHash,{date:day1,delete:true},(await getDoc(doc(groupDb,'channels',spareHash,'classbook',day1))).data()!.updatedAt.toDate().toISOString(),today));
+ await assertSucceeds(writeClassBookEntry(groupDb,spareHash,{date:day1,delete:true},(await getDoc(doc(groupDb,'channels',spareHash,'classbook',day1))).data()!.updatedAt.toDate().toISOString()));
  await assertSucceeds(ownerAction(ownerDb,'owner',{action:'groupCount',count:2},id));
  await ownerAction(ownerDb,'owner',{action:'deleteGroup',id:first.id},id);
  await env.withSecurityRulesDisabled(async ctx=>{assert.equal((await getDocs(collection(ctx.firestore() as unknown as Firestore,'channels',renewed,'classbook'))).size,0);});
  // Deleting the whole list also removes the remaining class books.
- await assertSucceeds(writeClassBookEntry(groupDb,otherHash,{date:day1,quran:'x',bildung:'',arabisch:''},null,today));
+ await assertSucceeds(writeClassBookEntry(groupDb,otherHash,{date:day1,quran:'x',bildung:'',arabisch:'',bemerkungen:''},null));
  await saveCourseLists(ownerDb,'owner',[{id,title:'Neu'}],[]);
  await env.withSecurityRulesDisabled(async ctx=>{assert.equal((await getDocs(collection(ctx.firestore() as unknown as Firestore,'channels',otherHash,'classbook'))).size,0);});
 });

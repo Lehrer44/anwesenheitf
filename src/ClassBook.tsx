@@ -1,5 +1,5 @@
 import {useEffect,useRef,useState,type KeyboardEvent,type ReactNode} from 'react';
-import {BookOpenText,CalendarDays,ChevronDown,ChevronLeft,ChevronRight,Pencil,Trash2,X} from 'lucide-react';
+import {BookOpenText,CalendarDays,ChevronDown,ChevronLeft,ChevronRight,MessageSquareText,Pencil,Trash2,X} from 'lucide-react';
 import {monthDays,shiftMonth,displayDate} from './calendar';
 import {courseToday} from './model';
 import {maxEntryText,sortedEntries,subjects,weekdayDate,type ClassBookEntry,type ClassBookInput,type SubjectKey} from './classbook';
@@ -7,7 +7,7 @@ import {maxEntryText,sortedEntries,subjects,weekdayDate,type ClassBookEntry,type
 // Qur'an on a reading stand (rahle); lucide has no fitting symbol.
 function QuranIcon(){return <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 5.5c3-1.2 6-.9 9 1 3-1.9 6-2.2 9-1v6c-3-1.2-6-.9-9 1-3-1.9-6-2.2-9-1z"/><path d="M12 6.5v6"/><path d="M6 14l12 7M18 14L6 21"/></svg>;}
 export function SubjectIcon({subject}:{subject:SubjectKey}){
- return <span className={'subject-icon '+subject} aria-hidden="true">{subject==='quran'?<QuranIcon/>:subject==='bildung'?<BookOpenText size={20}/>:<span lang="ar">ب</span>}</span>;
+ return <span className={'subject-icon '+subject} aria-hidden="true">{subject==='quran'?<QuranIcon/>:subject==='bildung'?<BookOpenText size={20}/>:subject==='bemerkungen'?<MessageSquareText size={20}/>:<span lang="ar">ب</span>}</span>;
 }
 // Shared modal behavior: focus on open, restore on close, Escape and a simple focus trap.
 function Dialog({className,labelledBy,onClose,children}:{className:string,labelledBy:string,onClose:()=>void,children:ReactNode}){
@@ -22,8 +22,8 @@ function Dialog({className,labelledBy,onClose,children}:{className:string,labell
  }
  return <div className="modal-backdrop" onClick={e=>{if(e.target===e.currentTarget)onClose();}}><section ref={panel} tabIndex={-1} className={'modal classbook-modal '+className} role="dialog" aria-modal="true" aria-labelledby={labelledBy} onKeyDown={keys}>{children}</section></div>;
 }
-const empty={quran:'',bildung:'',arabisch:''};
-const fieldsOf=(entry?:ClassBookEntry)=>entry?{quran:entry.quran,bildung:entry.bildung,arabisch:entry.arabisch}:empty;
+const empty={quran:'',bildung:'',arabisch:'',bemerkungen:''};
+const fieldsOf=(entry?:ClassBookEntry)=>entry?{quran:entry.quran,bildung:entry.bildung,arabisch:entry.arabisch,bemerkungen:entry.bemerkungen}:empty;
 
 export function ClassBookEditor({entries,initialDate,busy,error,onClose,onSave,onDelete}:{entries:ClassBookEntry[],initialDate?:string,busy:boolean,error:string,onClose:()=>void,onSave:(entry:ClassBookInput,expected:string|null)=>Promise<boolean>,onDelete:(date:string,expected:string|null)=>Promise<boolean>}){
  const today=courseToday(),[date,setDate]=useState(initialDate||today);
@@ -48,10 +48,10 @@ export function ClassBookEditor({entries,initialDate,busy,error,onClose,onSave,o
    <div className="classbook-field"><span className="classbook-label" id="classbook-date-label">Datum</span>
     <div className="classbook-date"><button type="button" className="classbook-date-value" aria-labelledby="classbook-date-label classbook-date-text" aria-expanded={picker} disabled={busy} onClick={()=>{setMonth(date.slice(0,7));setPicker(!picker);}}><span id="classbook-date-text">{date===today?'Heute, ':''}{weekdayDate(date)}</span></button><button type="button" className="btn classbook-calendar-button" aria-label="Anderes Datum wählen" title="Anderes Datum wählen" aria-expanded={picker} disabled={busy} onClick={()=>{setMonth(date.slice(0,7));setPicker(!picker);}}><CalendarDays size={20}/></button></div>
     {picker&&<div className="classbook-picker">
-     <div className="calendar-toolbar"><button type="button" className="btn" aria-label="Vorheriger Monat" onClick={()=>setMonth(shiftMonth(month,-1))}><ChevronLeft size={18}/></button><strong className="classbook-month">{new Date(month+'-01T12:00:00Z').toLocaleDateString('de-DE',{timeZone:'UTC',month:'long',year:'numeric'})}</strong><button type="button" className="btn" aria-label="Nächster Monat" disabled={month>=today.slice(0,7)} onClick={()=>setMonth(shiftMonth(month,1))}><ChevronRight size={18}/></button></div>
+     <div className="calendar-toolbar"><button type="button" className="btn" aria-label="Vorheriger Monat" onClick={()=>setMonth(shiftMonth(month,-1))}><ChevronLeft size={18}/></button><strong className="classbook-month">{new Date(month+'-01T12:00:00Z').toLocaleDateString('de-DE',{timeZone:'UTC',month:'long',year:'numeric'})}</strong><button type="button" className="btn" aria-label="Nächster Monat" disabled={month==='9999-12'} onClick={()=>setMonth(shiftMonth(month,1))}><ChevronRight size={18}/></button></div>
      <div className="multi-calendar" role="group" aria-label="Datum wählen">
       {['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=><span className="weekday" key={d} aria-hidden="true">{d}</span>)}
-      {monthDays(month).map((day,i)=>day?<button key={day} type="button" aria-label={displayDate(day)+(saved.has(day)?' · Eintrag vorhanden':'')} aria-pressed={day===date} disabled={day>today} className={'calendar-day'+(day===date?' selected':'')+(saved.has(day)?' has-entry':'')+(day===today?' today':'')} onClick={()=>choose(day)}>{Number(day.slice(-2))}</button>:<span key={'blank'+i} aria-hidden="true"/>)}
+      {monthDays(month).map((day,i)=>day?<button key={day} type="button" aria-label={displayDate(day)+(saved.has(day)?' · Eintrag vorhanden':'')} aria-pressed={day===date} className={'calendar-day'+(day===date?' selected':'')+(saved.has(day)?' has-entry':'')+(day===today?' today':'')} onClick={()=>choose(day)}>{Number(day.slice(-2))}</button>:<span key={'blank'+i} aria-hidden="true"/>)}
      </div>
      <p className="calendar-legend">Tage mit Punkt haben bereits einen Eintrag.</p>
     </div>}
@@ -60,7 +60,7 @@ export function ClassBookEditor({entries,initialDate,busy,error,onClose,onSave,o
    {subjects.map(s=><div className="classbook-field" key={s.key}><label className="classbook-label" htmlFor={'classbook-'+s.key}><SubjectIcon subject={s.key}/>{s.label}</label><textarea id={'classbook-'+s.key} dir="auto" rows={3} maxLength={maxEntryText} disabled={busy} value={fields[s.key]} onChange={e=>setFields({...fields,[s.key]:e.target.value})}/></div>)}
    {error&&<p className="form-error" role="alert">{error}</p>}
    <div className="modal-actions">{base&&<button type="button" className="btn danger classbook-delete" disabled={busy} onClick={()=>{if(confirm(`Den Klassenbuch-Eintrag vom ${weekdayDate(date)} löschen?`))void onDelete(date,base.updatedAt);}}><Trash2 size={16}/>Löschen</button>}<button type="button" className="btn" disabled={busy} onClick={close}>Schließen</button><button type="submit" className="btn primary" disabled={busy||!filled||(!!base&&!dirty)}>{busy?'Wird gespeichert …':base?'Speichern':'Hinzufügen'}</button></div>
-   {!filled&&<p className="hint">Mindestens ein Fach ausfüllen.</p>}
+   {!filled&&<p className="hint">Mindestens ein Feld ausfüllen.</p>}
   </form>
  </Dialog>;
 }
