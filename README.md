@@ -24,11 +24,15 @@ In der kompakten Klassenansicht sind Namen rechtsbündig. Für noch nicht erfass
 
 ## Klassenbuch
 
-In der Klassenansicht (Klassenlink) stehen neben der Terminauswahl zwei Schaltflächen: das Buchsymbol öffnet das **Klassenbuch**, das Plus öffnet **Klassenbuch-Eintrag**. Ein Eintrag besteht aus Datum und den Fächern **Qur’an**, **Islamische Bildung** und **Arabisch**; die Textfelder sind mehrzeilig (je höchstens 2.000 Zeichen), mindestens ein Fach muss ausgefüllt sein. Vorausgewählt ist das heutige Berliner Datum; das Kalendersymbol öffnet einen Monatskalender für heute oder vergangene Tage. Tage mit vorhandenem Eintrag tragen einen Punkt.
+In der Klassenansicht (Klassenlink) stehen neben der Terminauswahl drei Schaltflächen: das Personensymbol öffnet die **Lehrer**-Anwesenheit, das Buchsymbol das **Klassenbuch** und das Plus **Klassenbuch-Eintrag**. Ein Eintrag besteht aus Datum, den Fächern **Qur’an**, **Islamische Bildung** und **Arabisch** sowie **Bemerkungen**; die Textfelder sind mehrzeilig (je höchstens 2.000 Zeichen), mindestens ein Feld muss ausgefüllt sein. Bemerkungen erscheinen im Klassenbuch nur, wenn etwas eingetragen wurde. Vorausgewählt ist das heutige Berliner Datum; das Kalendersymbol öffnet einen Monatskalender, in dem auch zukünftige Tage gewählt werden können, um Einträge im Voraus anzulegen. Tage mit vorhandenem Eintrag tragen einen Punkt.
 
 Pro Klasse und Tag gibt es genau einen Eintrag. Wird ein Tag mit vorhandenem Eintrag gewählt, lädt das Formular diesen Eintrag; **Speichern** ersetzt ihn, **Löschen** entfernt ihn nach Bestätigung. Hat jemand anderes den Eintrag zwischenzeitlich geändert, wird ohne Überschreiben abgelehnt. Das Klassenbuch listet die Einträge mit dem neuesten Datum oben, zunächst zugeklappt; ein Klick auf das Datum klappt die Fächer auf. Die Symbole in der zugeklappten Zeile zeigen, welche Fächer ausgefüllt sind; **Bearbeiten** öffnet den Eintrag erneut.
 
 Die Kursleitung sieht unter **Links** über **Klassenbuch** die Einträge jeder Klasse nur lesend. Gespeichert wird unter `channels/{hash}/classbook/{datum}`. Beim **Link erneuern** wandern die Einträge in derselben Transaktion zum neuen Link; der alte Link verliert sofort den Zugriff. **Klasse löschen** und das Löschen einer Liste entfernen auch das zugehörige Klassenbuch. Eine automatische Verkleinerung der Klassenanzahl wird abgelehnt, solange eine betroffene Klasse Einträge hat.
+
+### Lehrer-Anwesenheit
+
+In der Klassenansicht stehen nur noch die Schüler in der Anwesenheitsliste. L1 und L2 markieren sich über das Personensymbol im Dialog **Lehrer** selbst; vorausgewählt ist immer „abwesend“, bis eine Lehrkraft sich als anwesend meldet. **Anwesenheit senden** im Lehrer-Dialog speichert nur die Lehrer und ändert den Meldestatus der Klasse nicht. Sendet die Klasse die Schülerliste, bleiben bereits gemeldete Lehrer erhalten; nicht gemeldete Lehrer gelten als abwesend. Für die Kursleitung bleiben die Lehrer in Tabelle, Klassenvorschau und Zählung „Anwesende L“ unverändert sichtbar.
 
 **Nach dem Zusammenführen müssen die Firestore-Regeln einmal neu veröffentlicht werden**, sonst lehnt Firebase das Klassenbuch ab (GitHub Pages veröffentlicht nur die Website):
 ```sh

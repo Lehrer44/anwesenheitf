@@ -14,8 +14,8 @@ service cloud.firestore {
   // channels/{hash}/lessons/{date}: ownerUid, courseId, groupId, date,
   //   cancelled, roster, rosterIds, marks, reportedAt:timestamp|null.
   // channels/{hash}/classbook/{date}: ownerUid, courseId, groupId, date,
-  //   quran, bildung, arabisch (<=2000 each, at least one), updatedAt:timestamp.
-  // Groups can only replace their own complete marks + server timestamp.
+  //   quran, bildung, arabisch, optional bemerkungen (<=2000 each, at least one), updatedAt:timestamp.
+  // Groups replace their own complete marks + server timestamp, or update marks without a new report time.
   // A channel path is a bearer credential, just like the existing secret link.
   function signed() { return request.auth != null; }
   function verified() {
@@ -83,10 +83,12 @@ service cloud.firestore {
   }
   function validClassBook(d,day) {
    return d.keys().hasAll(['ownerUid','courseId','groupId','date','quran','bildung','arabisch','updatedAt'])
-    && d.keys().hasOnly(['ownerUid','courseId','groupId','date','quran','bildung','arabisch','updatedAt'])
+    && d.keys().hasOnly(['ownerUid','courseId','groupId','date','quran','bildung','arabisch','bemerkungen','updatedAt'])
     && id(d.ownerUid) && id(d.courseId) && id(d.groupId) && date(day) && d.date==day
     && text(d.quran,2000) && text(d.bildung,2000) && text(d.arabisch,2000)
-    && (d.quran.size()>0 || d.bildung.size()>0 || d.arabisch.size()>0)
+    // Entries saved before remarks existed have no bemerkungen field.
+    && (!('bemerkungen' in d) || text(d.bemerkungen,2000))
+    && (d.quran.size()>0 || d.bildung.size()>0 || d.arabisch.size()>0 || d.get('bemerkungen','').size()>0)
     && d.updatedAt is timestamp && d.updatedAt<=request.time;
   }
   function activeChannel(hash) {
@@ -138,8 +140,10 @@ service cloud.firestore {
       && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerUid','courseId','groupId','date']))
      || (activeChannel(hash) && resource.data.cancelled=='' && resource.data.rosterIds.size()>0
       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks','reportedAt'])
-      && request.resource.data.marks.keys().hasAll(resource.data.rosterIds)
-      && request.resource.data.reportedAt==request.time));
+      // A class report is complete and timestamped; teacher self-reports change marks only.
+      && ((request.resource.data.marks.keys().hasAll(resource.data.rosterIds)
+        && request.resource.data.reportedAt==request.time)
+       || request.resource.data.reportedAt==resource.data.reportedAt)));
     allow delete: if manages(resource.data.ownerUid) && owner(resource.data.courseId);
    }
    // Class links write their own entries; owners only move or remove them with the class.

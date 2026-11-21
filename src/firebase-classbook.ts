@@ -1,26 +1,26 @@
 import {collection,doc,getDocs,onSnapshot,query,runTransaction,serverTimestamp,where,type Firestore,type Unsubscribe,type Timestamp} from 'firebase/firestore';
 import {tokenHash,type Channel,type Documents} from './firebase-data.ts';
 import {classBookEntry,type ClassBookEntry,type ClassBookInput} from './classbook.ts';
-import {courseToday} from './model.ts';
 import {isDate} from './calendar.ts';
 // channels/{hash}/classbook/{date}: written by the class link, readable by the course owner.
 // Like lessons, entries move with the class when its link is renewed.
-export type ClassBookDoc={ownerUid:string,courseId:string,groupId:string,date:string,quran:string,bildung:string,arabisch:string,updatedAt:Timestamp};
+// bemerkungen is missing on entries saved before remarks existed.
+export type ClassBookDoc={ownerUid:string,courseId:string,groupId:string,date:string,quran:string,bildung:string,arabisch:string,bemerkungen?:string,updatedAt:Timestamp};
 const invalidLink='Dieser Klassenlink ist ungültig oder wurde erneuert.';
 const stale='Der Eintrag wurde zwischenzeitlich geändert. Bitte das Klassenbuch erneut öffnen und prüfen.';
 // Firestore reports a renewed or removed link only as a missing permission.
 const readable=(e:unknown)=>(e as {code?:string}).code==='permission-denied'?Error(invalidLink):e as Error;
 const stamp=(value:ClassBookDoc['updatedAt']|null|undefined)=>value?value.toDate().toISOString():null;
-export const toEntry=(d:ClassBookDoc):ClassBookEntry=>({date:d.date,quran:d.quran,bildung:d.bildung,arabisch:d.arabisch,updatedAt:stamp(d.updatedAt)});
+export const toEntry=(d:ClassBookDoc):ClassBookEntry=>({date:d.date,quran:d.quran,bildung:d.bildung,arabisch:d.arabisch,bemerkungen:d.bemerkungen||'',updatedAt:stamp(d.updatedAt)});
 // Owners filter by ownerUid so the rules can authorize the query without reading the channel.
 export function watchClassBook(db:Firestore,hash:string,ownerUid:string|null,onChange:(entries:ClassBookEntry[])=>void,onError:(error:Error)=>void):Unsubscribe{
  const ref=collection(db,'channels',hash,'classbook');
  return onSnapshot(ownerUid?query(ref,where('ownerUid','==',ownerUid)):ref,snap=>onChange(snap.docs.map(d=>toEntry(d.data() as ClassBookDoc))),e=>onError(readable(e)));
 }
 // expected is the updatedAt the form was opened with (null: no entry existed yet).
-export async function writeClassBookEntry(db:Firestore,hash:string,input:ClassBookInput|{date:string,delete:true},expected:string|null,today=courseToday()){
+export async function writeClassBookEntry(db:Firestore,hash:string,input:ClassBookInput|{date:string,delete:true},expected:string|null){
  if(!isDate(input.date))throw Error('Bitte ein gültiges Datum wählen.');
- const entry='delete' in input?null:classBookEntry(input,today);
+ const entry='delete' in input?null:classBookEntry(input);
  await runTransaction(db,async tx=>{
   const channel=await tx.get(doc(db,'channels',hash));
   if(!channel.exists()||!channel.data().active)throw Error(invalidLink);
