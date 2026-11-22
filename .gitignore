@@ -6,7 +6,9 @@ dist/
 migration-data/
 *.tar.gz
 test-export.xlsx
+test-export.docx
 test-formatted-export.xlsx
+test-formatted-export.docx
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*

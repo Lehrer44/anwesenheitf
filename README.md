@@ -1,6 +1,6 @@
 # Kursblick / Anwesenheitsapp – Firebase Spark
 
-Einfache Anwesenheitsverwaltung: Klassenleitung öffnet einen geheimen Klassenlink, prüft alle Namen und sendet die Anwesenheit. Die Kursleitung sieht die Meldungen unmittelbar und kann eine Excel-Datei auf den eigenen Rechner herunterladen.
+Einfache Anwesenheitsverwaltung: Klassenleitung öffnet einen geheimen Klassenlink, prüft alle Namen und sendet die Anwesenheit. Die Kursleitung sieht die Meldungen unmittelbar und kann eine Word-Datei auf den eigenen Rechner herunterladen.
 
 React, TypeScript und Vite laufen auf GitHub Pages. Firebase Authentication und Cloud Firestore **Standard** bilden das Backend. Beim Anlegen wählt die Kursleitung die Klassenanzahl selbst (0 bis 30); es gibt keine voreingestellte Anzahl. Weitere Klassen lassen sich später über „Neue Klasse“ hinzufügen und über das Papierkorbsymbol nach Bestätigung entfernen. Jede Kursleitung sieht ausschließlich ihre eigenen Kurse; eine Person kann mehrere Kurse führen. Andere Verantwortliche registrieren eigene Konten und legen eigene Kurse an. Gezielt freigeschaltete Administratoren können sämtliche Kurse gemeinsam verwalten. Eine normale Registrierung vergibt keine Administratorrechte.
 
@@ -18,7 +18,7 @@ Die Anwesenheitstabelle wird von rechts nach links gelesen: Nummer (je Klasse ab
 
 **Termin anlegen** öffnet einen Kalender mit Mehrfachauswahl. Tage lassen sich einzeln an- und abwählen; die Auswahl bleibt beim Wechsel von Monat oder Jahr erhalten. Bereits angelegte Tage sind markiert und können nicht erneut angelegt werden. **Speichern** legt alle ausgewählten Termine gemeinsam mit jeweils einer eigenen Kopie der aktuellen aktiven Schülerliste an. So lassen sich beispielsweise 30 wöchentliche Termine über mehrere Monate vorbereiten.
 
-Über **Termine löschen** in der Werkzeugzeile oder **Mehrere Termine löschen** im einzelnen Unterrichtstermin öffnet sich die gemeinsame Lösch-Auswahl. Dort sind nur bestehende Termine auswählbar. **Vergangene auswählen** markiert alle Termine vor dem heutigen Berliner Datum; **Alle auswählen** markiert auch heutige und zukünftige Termine. Einzelne ausgewählte Tage lassen sich wieder abwählen. Nach einer Bestätigung werden die ausgewählten Termine einschließlich aller Anwesenheiten und Klassenmeldungen in einem Schritt entfernt; die übrigen Termine bleiben erhalten. Die Excel-Datei sollte bei Bedarf vorher exportiert werden. Ungültige, doppelte oder zwischenzeitlich veränderte Auswahlen werden ohne Teiländerungen abgelehnt. Die vorhandene Grenze von 400 geänderten Firestore-Dokumenten pro Speichervorgang bleibt erhalten; bei sehr großen Auswahlen müssen weniger Termine gewählt werden.
+Über **Termine löschen** in der Werkzeugzeile oder **Mehrere Termine löschen** im einzelnen Unterrichtstermin öffnet sich die gemeinsame Lösch-Auswahl. Dort sind nur bestehende Termine auswählbar. **Vergangene auswählen** markiert alle Termine vor dem heutigen Berliner Datum; **Alle auswählen** markiert auch heutige und zukünftige Termine. Einzelne ausgewählte Tage lassen sich wieder abwählen. Nach einer Bestätigung werden die ausgewählten Termine einschließlich aller Anwesenheiten und Klassenmeldungen in einem Schritt entfernt; die übrigen Termine bleiben erhalten. Die Word-Datei sollte bei Bedarf vorher exportiert werden. Ungültige, doppelte oder zwischenzeitlich veränderte Auswahlen werden ohne Teiländerungen abgelehnt. Die vorhandene Grenze von 400 geänderten Firestore-Dokumenten pro Speichervorgang bleibt erhalten; bei sehr großen Auswahlen müssen weniger Termine gewählt werden.
 
 In der kompakten Klassenansicht sind Namen rechtsbündig. Für noch nicht erfasste Schüler ist im Formular „abwesend“ vorausgewählt; vorhandene gespeicherte Status bleiben erhalten. Erst **Anwesenheit senden** speichert die Meldung. Der Sammelbutton „Alle anwesend“ entfällt. Namen in der Tabelle, Klassenkachel und Meldungsansicht verwenden bevorzugt Calibri (mit System-Ersatzschrift, falls die Schrift auf dem Gerät fehlt).
 
@@ -46,6 +46,10 @@ Unter **Links** steht oben der **Schul-Link**. Er öffnet eine Seite mit allen K
 ```sh
 npx -y firebase-tools@latest deploy --only firestore:rules --project anwesenheitf
 ```
+
+## Word-Export
+
+**Word** in der Werkzeugzeile der Tabelle erzeugt eine `.docx`-Datei nach der Schulvorlage: arabisch und von rechts nach links, Titel „جدول حضور الطلاب والمدرسين“, Spalten اليوم (Wochentag), التاريخ (Datum), الطلاب (anwesende Schüler, fett) und „المدرسون“ mit der Zahl der Lehrer in der Lehrerliste (anwesende Lehrer, jeder einmal gezählt). Kopfzeile grau, Zeilen abwechselnd hellgrau, A4 hoch. Bis 36 Termine steht eine Tabelle auf der Seite; bei mehr Terminen stehen zwei Tabellen nebeneinander (frühere Termine rechts), höchstens 72 Termine pro Seite, gleichmäßig auf beide Tabellen verteilt. Zukünftige Termine erscheinen ohne Zahlen, ausgefallene Termine mit „ملغى“. Mit Von/Bis lässt sich der Zeitraum eingrenzen.
 
 ## Kompakte Verwaltung
 
@@ -83,7 +87,7 @@ Die Firebase-Webkonfiguration darf im Browser sichtbar sein. **Service-Account-S
 
 ## Kostenloser Betrieb
 
-Die Anwendung verwendet keine Cloud Functions, kein Cloud Storage, keinen Dateiupload, keinen kostenpflichtigen Auth-Anbieter und kein Firebase App Hosting. Excel wird im Browser erzeugt und nur lokal heruntergeladen.
+Die Anwendung verwendet keine Cloud Functions, kein Cloud Storage, keinen Dateiupload, keinen kostenpflichtigen Auth-Anbieter und kein Firebase App Hosting. Die Word-Datei wird im Browser erzeugt und nur lokal heruntergeladen.
 
 Spark hat feste Nutzungskontingente. Für Firestore Standard sind dies derzeit 1 GiB Daten, 50.000 Lesevorgänge und 20.000 Schreibvorgänge pro Tag. Die Kontingente gelten für alle Kurse des Projekts zusammen. Wenige Klassen und Kursleitungen sind ein kleiner Anwendungsfall; die tatsächliche Nutzung muss nach der Einrichtung geprüft werden. Firebase garantiert mit Spark keine unbegrenzte Verfügbarkeit. Eine mit Supabase vergleichbare Sieben-Tage-Inaktivitätspause ist für Firestore nicht dokumentiert.
 

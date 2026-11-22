@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {initial,mutate,groupView} from '../src/model.ts';
-import {makeXlsx} from '../src/export.ts';
+import {makeDocx} from '../src/export.ts';
 import {writeFileSync} from 'node:fs';
 const s=initial(7);mutate(s,{action:'addStudents',names:'Müller & <Anna>\nBen Beispiel\nClara Beispiel'});mutate(s,{action:'distribute'});mutate(s,{action:'session',date:'2026-10-12'});
 const g=s.groups[0],id=s.students[0].id;
@@ -14,7 +14,7 @@ const view=groupView(s,g);assert.equal(view.sessions[0].roster.length,1);assert.
 mutate(s,{action:'cancel',date:'2026-10-12',reason:'Ferien'});assert.throws(()=>mutate(s,{action:'submit',date:'2026-10-12',marks:{[id]:'abwesend'}},g));
 mutate(s,{action:'restore',date:'2026-10-12'});assert.equal(s.sessions[0].marks[id],'anwesend');
 mutate(s,{action:'session',date:'2026-10-19'});mutate(s,{action:'cancel',date:'2026-10-19',reason:'Feiertag'});
-writeFileSync(process.env.KURSBLICK_TEST_EXPORT || './test-export.xlsx',makeXlsx(s));
+writeFileSync(process.env.KURSBLICK_TEST_EXPORT || './test-export.docx',makeDocx(s));
 assert.throws(()=>mutate(s,{action:'session',date:'2026-10-12'}));
 mutate(s,{action:'archive',id});assert.equal(s.sessions[0].roster.length,3);
 const demo=initial(7);mutate(demo,{action:'demo'});assert.equal(demo.students.length,100);assert.throws(()=>mutate(demo,{action:'addStudents',names:'Echte Person'}));mutate(demo,{action:'clearDemo'});assert.equal(demo.students.length,0);
