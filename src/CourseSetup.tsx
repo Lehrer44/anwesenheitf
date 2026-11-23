@@ -6,7 +6,7 @@ export default function CourseSetup({initialTitle='',initialCount,busy,onClose,o
  const [title,setTitle]=useState(initialTitle),[count,setCount]=useState(initialCount===undefined?'':String(initialCount)),[error,setError]=useState('');
  return <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-labelledby="course-setup-title">
   <button className="close" disabled={busy} onClick={onClose} aria-label="Dialog schließen"><X/></button>
-  <div className="eyebrow">KURSBLICK</div><h2 id="course-setup-title">Neue Liste anlegen</h2>
+  <h2 id="course-setup-title">Neue Liste anlegen</h2>
   <form onSubmit={async e=>{e.preventDefault();const value=Number(count);if(!count.trim()||!Number.isInteger(value)||value<0||value>30){setError('Bitte eine ganze Klassenanzahl von 0 bis 30 wählen.');return;}setError('');try{await onSubmit(title,value);}catch(e){setError((e as Error).message);}}}>
    <label>Listenname<input autoFocus required maxLength={100} value={title} onChange={e=>setTitle(e.target.value)}/></label>
    <label>Anzahl der Klassen<input required type="number" min={0} max={30} step={1} value={count} onChange={e=>setCount(e.target.value)} placeholder="Anzahl eingeben"/></label>

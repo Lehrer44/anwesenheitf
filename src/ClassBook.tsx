@@ -25,12 +25,14 @@ function Dialog({className,labelledBy,onClose,children}:{className:string,labell
 const empty={quran:'',bildung:'',arabisch:'',bemerkungen:''};
 const fieldsOf=(entry?:ClassBookEntry)=>entry?{quran:entry.quran,bildung:entry.bildung,arabisch:entry.arabisch,bemerkungen:entry.bemerkungen}:empty;
 
-export function ClassBookEditor({entries,initialDate,busy,error,onClose,onSave,onDelete}:{entries:ClassBookEntry[],initialDate?:string,busy:boolean,error:string,onClose:()=>void,onSave:(entry:ClassBookInput,expected:string|null)=>Promise<boolean>,onDelete:(date:string,expected:string|null)=>Promise<boolean>}){
+export function ClassBookEditor({entries,lessons,initialDate,busy,error,onClose,onSave,onDelete}:{entries:ClassBookEntry[],lessons:string[],initialDate?:string,busy:boolean,error:string,onClose:()=>void,onSave:(entry:ClassBookInput,expected:string|null)=>Promise<boolean>,onDelete:(date:string,expected:string|null)=>Promise<boolean>}){
  const today=courseToday(),[date,setDate]=useState(initialDate||today);
  // base is the saved entry the form started from; its timestamp detects concurrent edits.
  const [base,setBase]=useState(()=>entries.find(e=>e.date===(initialDate||today))||null);
  const [fields,setFields]=useState(()=>fieldsOf(base||undefined)),[picker,setPicker]=useState(false),[month,setMonth]=useState(date.slice(0,7));
- const saved=new Set(entries.map(e=>e.date)),original=fieldsOf(base||undefined);
+ const saved=new Set(entries.map(e=>e.date)),original=fieldsOf(base||undefined),planned=new Set(lessons);
+ // Ahead of time only for scheduled lessons, so a substitute finds the planned material.
+ const allowed=(day:string)=>day<=today||planned.has(day)||saved.has(day);
  const dirty=subjects.some(s=>fields[s.key]!==original[s.key]),filled=subjects.some(s=>fields[s.key].trim());
  function close(){if(!busy&&(!dirty||confirm('Ungespeicherten Eintrag verwerfen?')))onClose();}
  useEffect(()=>{if(!dirty)return;const unload=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue='';};window.addEventListener('beforeunload',unload);return()=>window.removeEventListener('beforeunload',unload);},[dirty]);
@@ -44,16 +46,16 @@ export function ClassBookEditor({entries,initialDate,busy,error,onClose,onSave,o
  return <Dialog className="classbook-editor" labelledBy="classbook-editor-title" onClose={close}>
   <button className="close" aria-label="Dialog schließen" disabled={busy} onClick={close}><X/></button>
   <h2 id="classbook-editor-title">Klassenbuch-Eintrag</h2>
-  <form onSubmit={e=>{e.preventDefault();if(!busy&&filled)void onSave({date,...fields},base?.updatedAt??null);}}>
+  <form onSubmit={e=>{e.preventDefault();if(!busy&&filled&&allowed(date))void onSave({date,...fields},base?.updatedAt??null);}}>
    <div className="classbook-field"><span className="classbook-label" id="classbook-date-label">Datum</span>
     <div className="classbook-date"><button type="button" className="classbook-date-value" aria-labelledby="classbook-date-label classbook-date-text" aria-expanded={picker} disabled={busy} onClick={()=>{setMonth(date.slice(0,7));setPicker(!picker);}}><span id="classbook-date-text">{date===today?'Heute, ':''}{weekdayDate(date)}</span></button><button type="button" className="btn classbook-calendar-button" aria-label="Anderes Datum wählen" title="Anderes Datum wählen" aria-expanded={picker} disabled={busy} onClick={()=>{setMonth(date.slice(0,7));setPicker(!picker);}}><CalendarDays size={20}/></button></div>
     {picker&&<div className="classbook-picker">
      <div className="calendar-toolbar"><button type="button" className="btn" aria-label="Vorheriger Monat" onClick={()=>setMonth(shiftMonth(month,-1))}><ChevronLeft size={18}/></button><strong className="classbook-month">{new Date(month+'-01T12:00:00Z').toLocaleDateString('de-DE',{timeZone:'UTC',month:'long',year:'numeric'})}</strong><button type="button" className="btn" aria-label="Nächster Monat" disabled={month==='9999-12'} onClick={()=>setMonth(shiftMonth(month,1))}><ChevronRight size={18}/></button></div>
      <div className="multi-calendar" role="group" aria-label="Datum wählen">
       {['Mo','Di','Mi','Do','Fr','Sa','So'].map(d=><span className="weekday" key={d} aria-hidden="true">{d}</span>)}
-      {monthDays(month).map((day,i)=>day?<button key={day} type="button" aria-label={displayDate(day)+(saved.has(day)?' · Eintrag vorhanden':'')} aria-pressed={day===date} className={'calendar-day'+(day===date?' selected':'')+(saved.has(day)?' has-entry':'')+(day===today?' today':'')} onClick={()=>choose(day)}>{Number(day.slice(-2))}</button>:<span key={'blank'+i} aria-hidden="true"/>)}
+      {monthDays(month).map((day,i)=>day?<button key={day} type="button" aria-label={displayDate(day)+(planned.has(day)?' · Termin':'')+(saved.has(day)?' · Eintrag vorhanden':'')} aria-pressed={day===date} disabled={!allowed(day)} className={'calendar-day'+(day===date?' selected':'')+(saved.has(day)?' has-entry':'')+(planned.has(day)?' lesson-day':'')+(day===today?' today':'')} onClick={()=>choose(day)}>{Number(day.slice(-2))}</button>:<span key={'blank'+i} aria-hidden="true"/>)}
      </div>
-     <p className="calendar-legend">Tage mit Punkt haben bereits einen Eintrag.</p>
+     <p className="calendar-legend">Grün umrandet: angelegter Termin. Punkt: Eintrag vorhanden. In der Zukunft sind nur angelegte Termine wählbar.</p>
     </div>}
    </div>
    {base&&<p className="classbook-existing">Für diesen Tag gibt es bereits einen Eintrag. Speichern ersetzt ihn.</p>}
