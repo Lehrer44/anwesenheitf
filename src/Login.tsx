@@ -22,8 +22,8 @@ export default function Login({onLogin}:{onLogin:()=>void}){
  async function check(){setBusy(true);setError('');setMessage('');try{if(await checkVerification()){setPending(null);onLogin();}else setMessage('Die Adresse ist noch nicht bestätigt. Öffne zuerst den Link aus der E-Mail und prüfe danach erneut.');}catch(e){setError(authErrorMessage(e));}finally{setBusy(false);}}
  async function changeAccount(){setBusy(true);try{await logout();setPending(null);setEmail('');setPassword('');setCreate(false);setError('');setMessage('');}catch(e){setError(authErrorMessage(e));}finally{setBusy(false);}}
  return <div className="login-page"><section className="login-card">
- <div className="brand"><span className="brandmark"><BookOpen size={22}/></span>Kursblick<span className="branddot">.</span></div>
- <div className="eyebrow">DEINE KURSVERWALTUNG</div><h1>{pending?'E-Mail bestätigen':create?'Konto erstellen':'Willkommen zurück.'}</h1>
+ <div className="brand"><span className="brandmark"><BookOpen size={22}/></span></div>
+ {(pending||create)&&<h1>{pending?'E-Mail bestätigen':'Konto erstellen'}</h1>}
  {!configured()?<div className="alert error">Firebase ist noch nicht eingerichtet.</div>:pending?<div className="verification-panel">
   <p>Dein Konto ist angelegt. Die Bestätigung steht noch aus:</p><strong className="verification-email" dir="auto">{pending.email}</strong>
   {error&&<div role="alert" className="alert error">{error}</div>}{message&&<div role="status" className="alert success">{message}</div>}
@@ -31,7 +31,7 @@ export default function Login({onLogin}:{onLogin:()=>void}){
   <button type="button" className="btn" disabled={busy||remaining>0} onClick={resend}>{remaining>0?`Erneut senden (${remaining}s)`:'Bestätigungsmail erneut senden'}</button>
   <details className="verification-help"><summary>Keine E-Mail erhalten?</summary><p>Prüfe Junk-E-Mail, blockierte Absender und die Schreibweise deiner Adresse. Bei Outlook kannst du den Absender als sicheren Absender eintragen und die Mail danach erneut anfordern.</p><p><a href="https://support.microsoft.com/en-us/outlook/filter-junk-email-and-spam-in-outlook" target="_blank" rel="noreferrer">Outlook: sichere Absender verwalten</a></p><p>Kommt weiterhin keine Mail an, muss die Administration den Mailversand prüfen. Eine erneute Registrierung ist nicht nötig.</p></details>
   <button type="button" className="textbutton" disabled={busy} onClick={changeAccount}>Mit anderem Konto anmelden</button>
- </div>:<><p>{create?'Erstelle ein Konto und bestätige anschließend deine E-Mail-Adresse.':'Melde dich mit deinem bestehenden Konto an. Klassenführer öffnen ihren Klassenlink.'}</p><form onSubmit={submit}>
+ </div>:<>{create&&<p>Erstelle ein Konto und bestätige anschließend deine E-Mail-Adresse.</p>}<form onSubmit={submit}>
   <label>E-Mail-Adresse<input autoComplete="email" type="email" disabled={busy} value={email} onChange={e=>setEmail(e.target.value)} required/></label>
   <label>Passwort<input autoComplete={create?'new-password':'current-password'} type="password" disabled={busy} minLength={8} value={password} onChange={e=>setPassword(e.target.value)} required/></label>
   {error&&<div role="alert" className="alert error">{error}</div>}{message&&<div role="status" className="alert success">{message}</div>}
