@@ -427,6 +427,7 @@
 .modal label.search.teacher-search input{display:block;width:100%;margin:0;font-size:15px}
 
 /* Teacher history: compact read-only grid, names sticky on the right. */
+/* Leaves room for the absolutely positioned close button (right 22px, 30px wide). */
 .teacher-head{display:flex;align-items:center;gap:12px;margin-right:36px}
 .teacher-head h2{margin-bottom:0!important}
 .teacher-head .teacher-history-button{margin-left:auto;min-height:34px;padding:6px 10px;font-size:13px}
@@ -451,6 +452,6 @@
 .history-cell.none{color:#a4afa4}
 .teacher-history .hint{margin-top:10px}
 .teacher-history .modal-actions{margin-top:14px;padding-top:12px}
-@media(max-width:760px){.history-wrap{margin:0 -16px;max-height:66vh}.history-table .history-name{width:104px;min-width:104px;max-width:104px;font-size:14px}.history-table thead th{width:34px;min-width:34px}.teacher-head{margin-right:30px}}
+@media(max-width:760px){.history-wrap{margin:0 -16px;max-height:66vh}.history-table .history-name{width:104px;min-width:104px;max-width:104px;font-size:14px}.history-table thead th{width:34px;min-width:34px}.teacher-head{margin-right:56px}}
 .calendar-day.lesson-day{border-color:#286b54;box-shadow:inset 0 0 0 1px #286b54}
 .calendar-day.lesson-day.selected{box-shadow:none}
