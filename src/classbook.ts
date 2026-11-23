@@ -22,6 +22,11 @@ export function classBookEntry(input:Partial<ClassBookInput>):ClassBookInput{
  if(subjects.every(s=>!entry[s.key]))throw Error('Bitte mindestens ein Feld ausfüllen.');
  return entry;
 }
+// Entries belong to scheduled lessons: today's lesson, else the latest past one, else the next one.
+export function defaultEntryDate(lessons:string[],today:string){
+ const sorted=[...new Set(lessons)].sort();
+ return sorted.includes(today)?today:sorted.filter(d=>d<today).at(-1)||sorted.find(d=>d>today)||'';
+}
 export const sortedEntries=(entries:ClassBookEntry[])=>[...entries].sort((a,b)=>b.date.localeCompare(a.date));
 const weekdays=['So','Mo','Di','Mi','Do','Fr','Sa'];
 // "Do 19.11.2026", independent of the device time zone.

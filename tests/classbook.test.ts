@@ -24,3 +24,10 @@ carryClassBooks(books,after,true);
 assert.deepEqual(after.get('channels/new/classbook/2026-11-19'),books.get('channels/old/classbook/2026-11-19'));
 assert.equal([...after.keys()].filter(p=>p.includes('/classbook/')).length,1);
 console.log('Class book checks passed: validation, multiline text, remarks, future dates, sorting, weekday labels and entries following renewed links.');
+// The class book follows scheduled lessons: today's, else the latest past, else the next one.
+import {defaultEntryDate} from '../src/classbook.ts';
+assert.equal(defaultEntryDate(['2026-11-10','2026-11-19','2026-11-24'],'2026-11-19'),'2026-11-19');
+assert.equal(defaultEntryDate(['2026-11-24','2026-11-10','2026-11-17'],'2026-11-20'),'2026-11-17');
+assert.equal(defaultEntryDate(['2026-11-28','2026-11-24'],'2026-11-20'),'2026-11-24');
+assert.equal(defaultEntryDate([],'2026-11-20'),'');
+console.log('Class book date checks passed: default entry date follows scheduled lessons.');
