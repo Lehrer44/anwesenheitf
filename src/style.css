@@ -455,3 +455,75 @@
 @media(max-width:760px){.history-wrap{margin:0 -16px;max-height:66vh}.history-table .history-name{width:104px;min-width:104px;max-width:104px;font-size:14px}.history-table thead th{width:34px;min-width:34px}.teacher-head{margin-right:56px}}
 .calendar-day.lesson-day{border-color:#286b54;box-shadow:inset 0 0 0 1px #286b54}
 .calendar-day.lesson-day.selected{box-shadow:none}
+
+/* School link page: classes with today's check marks, statistics beside (desktop) or below (phone). */
+.school-portal{max-width:1100px}
+.school-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:16px;align-items:start}
+.school-class-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.school-class-name small{font-size:12px}
+.school-class.reported .mini-icon{background:#286b54;color:#fff}
+.school-class-count{font-size:15px;font-weight:700;color:#1f5945;white-space:nowrap}
+.school-class-open{font-size:12px;font-weight:600;color:#8a6d1f;background:#fcf5e8;border-radius:10px;padding:3px 9px}
+.school-stats .panelhead{padding:14px 18px}
+.school-stats h2{display:flex;align-items:center;gap:8px;font-size:17px}
+.school-stats .panelhead small{font-size:12px;color:#6b7f76}
+.stats-table{width:100%;border-collapse:collapse;font-size:15px;white-space:normal}
+.stats-table th,.stats-table td{padding:11px 14px;border-bottom:1px solid #e3ebe6;text-align:center;color:#253d3a;position:static;background:transparent;min-width:0;letter-spacing:0}
+.stats-table thead th{font-size:12px;font-weight:600;color:#5f7a6d;background:#f3f7f4}
+.stats-table tbody th{text-align:left;font-weight:600;font-size:14px;white-space:nowrap}
+.stats-table td{font-weight:700;font-variant-numeric:tabular-nums}
+.stats-table td small{font-weight:400;color:#7a8983;font-size:12px}
+.stats-table tr.current{background:#edf5f0}.stats-table tr.current th{color:#1f5945}
+.stats-table .stats-cancelled{font-weight:400;color:#8a6d1f}
+.alert.success span{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+/* Live attendance count in the class view. */
+.present-count{font-size:15px;color:#253d3a;white-space:nowrap}.present-count span{font-size:20px;color:#1f5945}
+.submit-info{display:flex;flex-direction:column;gap:2px;min-width:0}
+.submit-info small{font-size:12px;color:#7a8983}
+.group-panel .report-info small{display:flex;align-items:center;gap:4px}
+
+/* Phones: most teachers use the app on a smartphone. */
+@media(max-width:760px){
+ /* 16px stops iOS from zooming into fields on focus. */
+ input,select,textarea{font-size:16px!important}
+ .btn{min-height:44px;font-size:14px}
+ .textbutton{font-size:14px;padding:8px 0}
+ .hint,.calendar-legend{font-size:12px!important}
+ .panelhead p,.school-portal .panelhead p{font-size:13px}
+ .school-layout{grid-template-columns:1fr}
+ .school-title{font-size:20px}
+ .school-class{font-size:17px;min-height:60px}
+ /* Dialogs open as bottom sheets with the actions always in reach. */
+ .modal-backdrop{align-items:flex-end;padding:0!important}
+ .modal{width:100%!important;max-width:100%;max-height:calc(100dvh - 12px);border-radius:18px 18px 0 0;padding:20px 16px 0!important}
+ .modal h2{font-size:21px;margin-right:36px}
+ .modal .close{top:14px;right:10px;width:44px;height:44px;display:grid;place-items:center}
+ .modal-actions{position:sticky;bottom:0;z-index:6;background:#fff;margin:16px -16px 0!important;padding:12px 16px calc(12px + env(safe-area-inset-bottom))!important;border-top:1px solid #e3ebe6}
+ .modal-actions .btn{flex:1;min-width:0;white-space:normal}
+ .modal>.hint:last-child,.modal form>.hint:last-child{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+ .submitbar{padding-bottom:calc(12px + env(safe-area-inset-bottom))!important}
+ .group-panel .submitbar{flex-direction:row;align-items:center}
+ .group-panel .submitbar>.btn{width:auto;flex:0 0 auto;min-height:48px;padding:10px 16px;font-size:15px}
+ .group-panel .group-tools{flex-wrap:nowrap}
+ .group-panel .report-info{flex:1}
+ /* Phones show only the page name in the header. */
+ .topbar .breadcrumb{font-size:0;gap:0}.topbar .breadcrumb>svg{display:none}.topbar .breadcrumb>strong{font-size:16px;font-weight:600;color:#253d3a;max-width:none}.live{font-size:11px}
+ .content{padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+}
+@media(max-width:380px){.present-count{font-size:13px}.present-count span{font-size:17px}.group-panel .classbook-actions{gap:4px}.group-panel .classbook-actions .btn{min-width:38px;padding:6px}}
+/* Class toolbar: labels on wide screens; on phones count and date first, then three equal buttons. */
+.group-panel .classbook-actions .btn-label{font-size:13px}
+@media(max-width:760px){
+ .group-panel .group-tools{display:grid!important;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"info date" "actions actions";gap:8px 10px;padding:10px 12px!important;align-items:center}
+ .group-panel .report-info{grid-area:info;min-width:0}
+ .group-panel .group-tools>select{grid-area:date;max-width:none;font-size:16px;min-height:44px}
+ .group-panel .classbook-actions{grid-area:actions;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px!important;margin:0}
+ .group-panel .classbook-actions .btn{min-height:44px!important;min-width:0!important;padding:6px!important;gap:6px;flex-direction:row}
+ .group-panel .classbook-actions .btn-label{font-size:13px;overflow:hidden;text-overflow:ellipsis}
+ .stats-table td{white-space:nowrap}
+}
+.stats-table td{white-space:nowrap}
+.stats-table td small{display:inline;margin:0}
+@media(max-width:760px){.group-panel .classbook-actions .btn svg{width:18px;height:18px;flex-shrink:0}.group-panel .classbook-actions .btn{gap:4px!important;padding:4px!important}}
+@media(max-width:400px){.group-panel .classbook-actions .btn-label{font-size:12px}}
+@media(max-width:340px){.group-panel .classbook-actions .btn svg{display:none}}

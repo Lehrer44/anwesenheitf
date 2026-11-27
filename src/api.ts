@@ -2,7 +2,8 @@ import {ownerRead,ownerAction,watchOwnerCourse} from './firebase-repository';
 import {signInAnonymously} from 'firebase/auth';
 import {createAccountAccess} from './account-auth';
 import {auth,db,configured} from './firebase';
-import {collection,doc,getDoc,getDocs,onSnapshot,query,runTransaction,serverTimestamp,where,writeBatch,type Unsubscribe} from 'firebase/firestore';
+import {collection,doc,getDoc,getDocs,limit,onSnapshot,orderBy,query,runTransaction,serverTimestamp,where,writeBatch,type Unsubscribe} from 'firebase/firestore';
+import {courseToday} from './model';
 import {initial,mutate,needsTeacherSync,type State} from './model';
 import {documentsFor,groupState,tokenHash,type Channel,type Lesson,type Portal,type Staff,type StaffDay} from './firebase-data';
 import type {Status} from './model';
@@ -141,4 +142,19 @@ export async function watchPortal(access:Access,onChange:(portal:Portal)=>void,o
   if(!snap.exists()||!snap.data().active||snap.data().courseId!==access.course){onError(Error('Dieser Schul-Link ist ungültig oder wurde erneuert.'));return;}
   onChange(snap.data() as Portal);
  },e=>onError((e as {code?:string}).code==='permission-denied'?Error('Dieser Schul-Link ist ungültig oder wurde erneuert.'):e));
+}
+
+// School overview on the class selection page: the latest lessons of every class and the teacher list.
+// Only the last five lessons per class are read, which keeps daily reads small on the free plan.
+export async function watchSchoolOverview(classes:{id:string,token:string}[],onChange:(value:{lessons:Record<string,Lesson[]>,staff:StaffDay[]})=>void,onError:(error:Error)=>void):Promise<Unsubscribe>{
+ await groupUser();const {db}=services(),today=courseToday(),stops:Unsubscribe[]=[],lessons:Record<string,Lesson[]>={};
+ let staff:StaffDay[]|null=null,stopped=false;
+ const emit=()=>{if(!stopped&&staff&&Object.keys(lessons).length===classes.length)onChange({lessons:{...lessons},staff});};
+ const recent=(path:string[])=>query(collection(db,path[0],...path.slice(1)),where('date','<=',today),orderBy('date','desc'),limit(5));
+ const hashes=await Promise.all(classes.map(c=>tokenHash(c.token)));
+ for(const [i,c] of classes.entries())stops.push(onSnapshot(recent(['channels',hashes[i],'lessons']),snap=>{lessons[c.id]=snap.docs.map(d=>d.data() as Lesson);emit();},e=>onError(e)));
+ const channel=hashes.length?await getDoc(doc(db,'channels',hashes[0])):null,staffHash=channel?.exists()?(channel.data() as Channel).staff:'';
+ if(staffHash)stops.push(onSnapshot(recent(['staff',staffHash,'days']),snap=>{staff=snap.docs.map(d=>d.data() as StaffDay);emit();},e=>onError(e)));
+ else{staff=[];emit();}
+ return ()=>{stopped=true;stops.forEach(stop=>stop());};
 }
