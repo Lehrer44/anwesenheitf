@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import {before,after,test} from 'node:test';
 import assert from 'node:assert/strict';
 import {initializeTestEnvironment,assertFails,assertSucceeds,type RulesTestEnvironment} from '@firebase/rules-unit-testing';
-import {collection,collectionGroup,doc,getDoc,getDocs,onSnapshot,query,serverTimestamp,setDoc,updateDoc,deleteDoc,where,writeBatch,Timestamp,type Firestore} from 'firebase/firestore';
+import {collection,collectionGroup,doc,getDoc,getDocs,limit,onSnapshot,orderBy,query,serverTimestamp,setDoc,updateDoc,deleteDoc,where,writeBatch,Timestamp,type Firestore} from 'firebase/firestore';
 import {initial,mutate,attendanceCounts,needsTeacherSync} from '../src/model.ts';
 import {documentsFor,tokenHash,type Lesson} from '../src/firebase-data.ts';
 import {ownerAction,ownerRead,watchOwnerCourse} from '../src/firebase-repository.ts';
@@ -505,4 +505,18 @@ test('class book entries are class-scoped, conflict-checked and follow renewed l
  await assertSucceeds(writeClassBookEntry(groupDb,otherHash,{date:day1,quran:'x',bildung:'',arabisch:'',bemerkungen:''},null));
  await saveCourseLists(ownerDb,'owner',[{id,title:'Neu'}],[]);
  await env.withSecurityRulesDisabled(async ctx=>{assert.equal((await getDocs(collection(ctx.firestore() as unknown as Firestore,'channels',otherHash,'classbook'))).size,0);});
+});
+
+test('the school overview reads only the latest lessons and teacher days through the class links',async()=>{
+ const id='overview-course',s=initial(2),dates=['2026-01-06','2026-01-08','2026-01-10','2026-01-13','2026-01-15','2026-01-17','2099-01-01'];
+ for(const g of s.groups)mutate(s,{action:'addStudents',names:'P '+g.id,group:g.id});
+ mutate(s,{action:'group',id:s.groups[0].id,name:'K1',l1:'T'});mutate(s,{action:'sessions',dates});
+ const batch=writeBatch(ownerDb);for(const [path,value] of await documentsFor(s,id,'owner',0))batch.set(doc(ownerDb,path),value);await batch.commit();
+ const hash=await tokenHash(s.groups[0].token!),staff=await tokenHash(s.school!.staff),today='2026-01-16';
+ const recent=(...path:string[])=>query(collection(groupDb,path[0],...path.slice(1)),where('date','<=',today),orderBy('date','desc'),limit(5));
+ const lessons=await assertSucceeds(getDocs(recent('channels',hash,'lessons')));
+ assert.deepEqual(lessons.docs.map(d=>d.id),['2026-01-15','2026-01-13','2026-01-10','2026-01-08','2026-01-06']);
+ const days=await assertSucceeds(getDocs(recent('staff',staff,'days')));assert.equal(days.size,5);assert.equal(days.docs[0].id,'2026-01-15');
+ await assertFails(getDocs(query(collection(publicDb,'channels',hash,'lessons'),where('date','<=',today),orderBy('date','desc'),limit(5))));
+ await saveCourseLists(ownerDb,'owner',[{id,title:s.title}],[]);
 });

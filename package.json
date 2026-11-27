@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "node --experimental-strip-types tests/navigation.test.ts && node --experimental-strip-types tests/model.test.ts && node --experimental-strip-types tests/changes.test.ts && node --experimental-strip-types tests/consolidation.test.ts && node --experimental-strip-types tests/export.test.ts && node --experimental-strip-types tests/firebase-data.test.ts && node --experimental-strip-types tests/teacher-attendance.test.ts && node --experimental-strip-types tests/classbook.test.ts && node --experimental-strip-types tests/teacher-history.test.ts",
+    "test": "node --experimental-strip-types tests/navigation.test.ts && node --experimental-strip-types tests/model.test.ts && node --experimental-strip-types tests/changes.test.ts && node --experimental-strip-types tests/consolidation.test.ts && node --experimental-strip-types tests/export.test.ts && node --experimental-strip-types tests/firebase-data.test.ts && node --experimental-strip-types tests/teacher-attendance.test.ts && node --experimental-strip-types tests/classbook.test.ts && node --experimental-strip-types tests/teacher-history.test.ts && node --experimental-strip-types tests/school-stats.test.ts",
     "test:rules": "firebase emulators:exec --only firestore --project demo-kursblick \"node --experimental-strip-types --test tests/firestore.rules.test.ts\"",
     "typecheck:firebase": "tsc --noEmit -p tsconfig.firebase.json",
-    "test:auth": "firebase emulators:exec --only auth --project demo-kursblick-auth \"node --experimental-strip-types --test tests/account-auth.test.ts\""
+    "test:auth": "firebase emulators:exec --only auth --project demo-kursblick-auth \"node --experimental-strip-types --test tests/account-auth.test.ts\"",
+    "dev:emulator": "VITE_FIREBASE_EMULATORS=1 VITE_FIREBASE_API_KEY=demo-key VITE_FIREBASE_AUTH_DOMAIN=demo-kursblick.firebaseapp.com VITE_FIREBASE_PROJECT_ID=demo-kursblick VITE_FIREBASE_APP_ID=demo-app vite",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-kursblick",
+    "seed:emulator": "node --experimental-strip-types scripts/seed-emulator.ts"
   },
   "dependencies": {
     "firebase": "13.1.0",

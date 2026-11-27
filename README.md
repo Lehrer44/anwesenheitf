@@ -40,12 +40,26 @@ Gespeichert wird unter `staff/{hash}` (Namen, L1/L2) und `staff/{hash}/days/{dat
 
 ### Schul-Link
 
-Unter **Links** steht oben der **Schul-Link**. Er öffnet eine Seite mit allen Klassen; nach der Wahl erscheint die bekannte Klassenansicht mit **Andere Klasse** zum Wechseln. Das Gerät merkt sich die zuletzt gewählte Klasse und öffnet sie beim nächsten Mal direkt. Wer den Schul-Link hat, erreicht jede Klasse. **Link erneuern** macht den bisherigen Schul-Link sofort ungültig; die Lehrer-Markierungen bleiben erhalten. Die einzelnen Klassenlinks funktionieren weiterhin.
+Unter **Links** steht oben der **Schul-Link**. Er öffnet die Klassenauswahl mit allen Klassen; nach der Wahl erscheint die bekannte Klassenansicht mit **Andere Klasse** zum Wechseln (ohne Neuladen der Seite). Wer den Schul-Link hat, erreicht jede Klasse. **Link erneuern** macht den bisherigen Schul-Link sofort ungültig; die Lehrer-Markierungen bleiben erhalten. Die einzelnen Klassenlinks funktionieren weiterhin.
 
-**Nach dem Zusammenführen müssen die Firestore-Regeln einmal neu veröffentlicht werden**, sonst lehnt Firebase das Klassenbuch ab (GitHub Pages veröffentlicht nur die Website):
+Nach **Anwesenheit senden** kehrt man über den Schul-Link automatisch zur Klassenauswahl zurück und sieht eine Bestätigung. Klassen, die für den aktuellen Termin (den letzten Termin bis heute) gesendet haben, tragen ein Häkchen mit „anwesend/gesamt“; noch offene Klassen sind als „offen“ markiert. Am Tag des nächsten Termins beginnen alle Klassen wieder ohne Häkchen, weil sich der aktuelle Termin ändert – es muss nichts zurückgesetzt werden.
+
+Neben der Klassenliste (auf dem Handy darunter) zeigt **Statistik** für alle Lehrer die letzten fünf Termine bis heute, den aktuellsten oben: Datum, anwesende Lehrer und anwesende Schüler aller Klassen. Ausgefallene Termine stehen als „Ausfall“ da. Gelesen werden je Klasse nur die letzten fünf Termine, damit das Spark-Kontingent geschont wird.
+
+In der Klassenansicht zählt **anwesend** oben und in der festen Leiste unten live mit (z. B. 23/37), während die Liste geprüft wird.
+
+### Handy
+
+Die Oberfläche ist für Smartphones ausgelegt: Dialoge öffnen als Blatt von unten mit stets erreichbaren Schaltflächen, Eingabefelder nutzen 16 px Schrift (kein automatisches Hineinzoomen auf iPhones), Schaltflächen sind mindestens 44 px hoch, und feste Leisten berücksichtigen den unteren Bildschirmrand. In der Klassenansicht stehen auf dem Handy Anwesenheitszahl und Datum oben, darunter **Lehrer**, **Klassenbuch** und **Eintrag** als gleich breite Schaltflächen.
+
+### Lokale Vorschau mit Emulatoren
+
 ```sh
-npx -y firebase-tools@latest deploy --only firestore:rules --project anwesenheitf
+npm run emulators        # Auth und Firestore lokal (Projekt demo-kursblick)
+npm run seed:emulator    # Demo-Schule anlegen; gibt Verwaltung, Schul-Link und Klassenlink aus
+npm run dev:emulator     # App gegen die Emulatoren starten
 ```
+Der Emulator-Modus berührt das echte Firebase-Projekt nicht; die Veröffentlichung lehnt ihn ab.
 
 ## Word-Export
 

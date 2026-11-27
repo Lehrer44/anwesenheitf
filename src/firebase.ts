@@ -1,6 +1,6 @@
 import {initializeApp} from 'firebase/app';
-import {getAuth} from 'firebase/auth';
-import {getFirestore} from 'firebase/firestore';
+import {connectAuthEmulator,getAuth} from 'firebase/auth';
+import {connectFirestoreEmulator,getFirestore} from 'firebase/firestore';
 import projectOptions from './firebase-config.json';
 
 // This configuration identifies the project. It contains no Admin SDK credentials.
@@ -17,3 +17,5 @@ const app = configured() ? initializeApp(options) : null;
 export const auth = app ? getAuth(app) : null;
 // Memory cache only: course data must not linger in IndexedDB on shared computers.
 export const db = app ? getFirestore(app) : null;
+// Local development only (npm run dev:emulator): never set for the GitHub Pages build.
+if(auth&&db&&import.meta.env.VITE_FIREBASE_EMULATORS==='1'){connectAuthEmulator(auth,'http://127.0.0.1:9099',{disableWarnings:true});connectFirestoreEmulator(db,'127.0.0.1',8080);}
